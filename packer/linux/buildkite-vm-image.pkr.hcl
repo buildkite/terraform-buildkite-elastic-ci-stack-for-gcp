@@ -117,6 +117,11 @@ build {
     source      = "conf"
   }
 
+  provisioner "file" {
+    destination = "/tmp"
+    source      = "../../templates"
+  }
+
   # Create empty directories for plugins and build
   provisioner "shell" {
     inline = [
@@ -127,26 +132,26 @@ build {
 
   # Essential utilities & updates
   provisioner "shell" {
-    script = "scripts/install-utils.sh"
+    script = "scripts/install-utils"
   }
 
   # Buildkite Agent installation
   provisioner "shell" {
-    script = "scripts/install-buildkite-agent.sh"
+    script = "scripts/install-buildkite-agent"
   }
 
   # Buildkite utilities (excluding S3-related components)
   provisioner "shell" {
-    script = "scripts/install-buildkite-utils.sh"
+    script = "scripts/install-buildkite-utils"
   }
 
   # Session Manager-like functionality for GCP
   provisioner "shell" {
-    script = "scripts/install-gcp-tools.sh"
+    script = "scripts/install-gcp-tools"
   }
 
   # Final cleanup
   provisioner "shell" {
-    script = "scripts/cleanup.sh"
+    script = "scripts/cleanup"
   }
 }
