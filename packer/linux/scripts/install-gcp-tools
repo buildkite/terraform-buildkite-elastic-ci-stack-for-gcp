@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Set non-interactive mode for apt operations
+export DEBIAN_FRONTEND=noninteractive
+export DEBCONF_NONINTERACTIVE_SEEN=true
+
+echo "Installing GCP-specific tools and utilities..."
+
+sudo -E apt-get update -y
+sudo -E apt-get install -yq google-cloud-cli
+
+# Install gcloud compute instance management tools
+echo "Installing gcloud compute components..."
+sudo -E apt-get install -yq google-cloud-cli-gke-gcloud-auth-plugin
+
+# Create a simple metadata service helper (equivalent to AWS instance metadata)
+echo "Creating GCP metadata helper script..."
+sudo cp /tmp/templates/scripts/gcp-metadata /usr/local/bin/gcp-metadata
+sudo chmod +x /usr/local/bin/gcp-metadata
+
+# Create a spot/preemptible instance handler (equivalent to AWS spot instance handling)
+echo "Creating preemptible instance monitor..."
+sudo cp /tmp/templates/scripts/monitor-preemption /usr/local/bin/monitor-preemption
+sudo chmod +x /usr/local/bin/monitor-preemption
+
+# Create systemd service for preemption monitoring
+echo "Creating preemption monitor systemd service..."
+sudo cp /tmp/templates/systemd/preemption-monitor.service /etc/systemd/system/preemption-monitor.service
+
+# Enable but don't start the preemption monitor (will be started by user configuration)
+sudo systemctl enable preemption-monitor.service
+
+# Install ops-agent equivalent functionality (basic monitoring without the agent itself)
+echo "Setting up basic system monitoring (ops-agent excluded from v1.0.0)..."
+
+# Create a simple system metrics collection script
+sudo cp /tmp/templates/scripts/collect-system-metrics /usr/local/bin/collect-system-metrics
+sudo chmod +x /usr/local/bin/collect-system-metrics
+
+echo "Creating log rotation configuration for buildkite agent..."
+sudo cp /tmp/templates/config/logrotate-buildkite-agent /etc/logrotate.d/buildkite-agent
+
+echo "GCP tools installation complete."

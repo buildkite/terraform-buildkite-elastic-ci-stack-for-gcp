@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Set non-interactive mode for any apt operations
+export DEBIAN_FRONTEND=noninteractive
+export DEBCONF_NONINTERACTIVE_SEEN=true
+
+case $(uname -m) in
+x86_64) ARCH=amd64 ;;
+aarch64) ARCH=arm64 ;;
+*) ARCH=unknown ;;
+esac
+
+echo "Installing buildkite elastic stack utilities (excluding S3-related components)..."
+
+echo "Installing bk elastic stack bin files..."
+if [ -d /tmp/conf/bin ]; then
+  sudo chmod +x /tmp/conf/bin/bk-* || echo "No bk-* binaries found"
+  sudo mv /tmp/conf/bin/bk-* /usr/local/bin/ || echo "No bk-* binaries to move"
+fi
+
+echo "Installing fix-buildkite-agent-builds-permissions..."
+if [ -f "/tmp/build/fix-perms-linux-${ARCH}" ]; then
+  sudo chmod +x "/tmp/build/fix-perms-linux-${ARCH}"
+  sudo mv "/tmp/build/fix-perms-linux-${ARCH}" /usr/bin/fix-buildkite-agent-builds-permissions
+else
+  echo "Creating default fix-buildkite-agent-builds-permissions script..."
+  sudo cp /tmp/templates/scripts/fix-buildkite-agent-builds-permissions /usr/bin/fix-buildkite-agent-builds-permissions
+  sudo chmod +x /usr/bin/fix-buildkite-agent-builds-permissions
+fi
+
+# NOTE: Excluding S3-secrets-helper as per requirements
+echo "Skipping S3-secrets-helper installation (excluded from v0.1.0 release)"
+
+LIFECYCLED_VERSION=v3.3.0
+echo "Installing lifecycled ${LIFECYCLED_VERSION}..."
+sudo touch /etc/lifecycled
+sudo curl -Lf -o /usr/bin/lifecycled \
+  https://github.com/buildkite/lifecycled/releases/download/${LIFECYCLED_VERSION}/lifecycled-linux-${ARCH}
+sudo chmod +x /usr/bin/lifecycled
+
+# Create a basic systemd service for lifecycled (adapted for GCP)
+echo "Creating lifecycled systemd service..."
+sudo cp /tmp/templates/systemd/lifecycled.service /etc/systemd/system/lifecycled.service
+
+echo "Adding SSH authorized keys systemd units (if available)..."
+if [ -d /tmp/conf/ssh/systemd ]; then
+  sudo cp /tmp/conf/ssh/systemd/* /etc/systemd/system/ || echo "No SSH systemd units to copy"
+else
+  echo "No SSH systemd configuration found, skipping..."
+fi
+
+echo "Buildkite utilities installation complete (S3 components excluded)."
