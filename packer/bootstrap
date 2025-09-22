@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # Startup script for Buildkite agent VM instances
@@ -42,38 +42,14 @@ echo "  Tags: $BUILDKITE_TAGS"
 # Create Buildkite agent configuration file
 sudo mkdir -p /etc/buildkite-agent
 
-cat <<EOF | sudo tee /etc/buildkite-agent/buildkite-agent.cfg
-token="$BUILDKITE_TOKEN"
-name="$BUILDKITE_AGENT_NAME"
-tags="queue=$BUILDKITE_QUEUE,gcp-project=$PROJECT_ID,gcp-zone=$ZONE,gcp-instance=$INSTANCE_NAME,$BUILDKITE_TAGS"
-priority=$BUILDKITE_PRIORITY
-build-path="/var/lib/buildkite-agent/builds"
-hooks-path="/etc/buildkite-agent/hooks"
-plugins-path="/var/lib/buildkite-agent/plugins"
-git-mirrors-path="/var/lib/buildkite-agent/git-mirrors"
-spawn=1
-cancel-grace-period=10
-disconnect-after-job=false
-disconnect-after-idle-timeout=0
-shell-options="-euo pipefail"
-timestamp-lines=true
-health-check-addr=":8080"
-debug=false
-EOF
+envsubst < /tmp/templates/config/buildkite-agent.cfg.template | sudo tee /etc/buildkite-agent/buildkite-agent.cfg
 
 # Set proper ownership
 sudo chown buildkite-agent:buildkite-agent /etc/buildkite-agent/buildkite-agent.cfg
 sudo chmod 640 /etc/buildkite-agent/buildkite-agent.cfg
 
 # Create environment file for additional variables
-cat <<EOF | sudo tee /etc/buildkite-agent/env
-# Environment variables for Buildkite agent
-BUILDKITE_AGENT_TOKEN=$BUILDKITE_TOKEN
-BUILDKITE_AGENT_NAME=$BUILDKITE_AGENT_NAME
-BUILDKITE_GCP_PROJECT_ID=$PROJECT_ID
-BUILDKITE_GCP_ZONE=$ZONE
-BUILDKITE_GCP_INSTANCE_NAME=$INSTANCE_NAME
-EOF
+envsubst < /tmp/templates/config/buildkite-agent-env.template | sudo tee /etc/buildkite-agent/env
 
 sudo chown buildkite-agent:buildkite-agent /etc/buildkite-agent/env
 sudo chmod 640 /etc/buildkite-agent/env

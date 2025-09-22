@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # Build script for Buildkite Elastic CI Stack GCP Custom Image
@@ -62,66 +62,66 @@ log_error() {
 
 check_requirements() {
     log_info "Checking requirements..."
-    
+
     # Check if packer is installed
     if ! command -v packer &> /dev/null; then
         log_error "Packer is not installed. Please install Packer and try again."
         log_info "Visit: https://developer.hashicorp.com/packer/tutorials/docker-get-started/get-started-install-cli"
         exit 1
     fi
-    
+
     # Check if gcloud is installed and authenticated
     if ! command -v gcloud &> /dev/null; then
         log_error "gcloud CLI is not installed. Please install it and try again."
         log_info "Visit: https://cloud.google.com/sdk/docs/install"
         exit 1
     fi
-    
+
     # Check if authenticated with gcloud
     if ! gcloud auth application-default print-access-token &> /dev/null; then
         log_error "GCP authentication not found."
         log_info "Please run: gcloud auth application-default login"
         exit 1
     fi
-    
+
     # Check if required directories exist
     if [ ! -d "linux/conf" ]; then
         log_error "Configuration directory 'linux/conf' not found."
         log_error "Make sure you're running this script from the packer directory."
         exit 1
     fi
-    
+
     if [ ! -d "linux/scripts" ]; then
         log_error "Scripts directory 'linux/scripts' not found."
         log_error "Make sure you're running this script from the packer directory."
         exit 1
     fi
-    
+
     # Create build and plugins directories if they don't exist
     if [ ! -d "../build" ]; then
         log_info "Creating build directory..."
         mkdir -p ../build
         echo "# Build artifacts will be placed here" > ../build/README.md
     fi
-    
+
     if [ ! -d "../plugins" ]; then
         log_info "Creating plugins directory..."
-        mkdir -p ../plugins  
+        mkdir -p ../plugins
         echo "# Buildkite plugins will be placed here" > ../plugins/README.md
     fi
-    
+
     log_info "Requirements check passed."
 }
 
 validate_project() {
     log_info "Validating GCP project: $PROJECT_ID"
-    
+
     if ! gcloud projects describe "$PROJECT_ID" &> /dev/null; then
         log_error "Project '$PROJECT_ID' not found or not accessible."
         log_info "Please check the project ID and your permissions."
         exit 1
     fi
-    
+
     log_info "Project validation passed."
 }
 
@@ -136,39 +136,39 @@ check_service_account() {
         log_info "Service account validation passed."
     else
         log_info "No service account specified, checking for default Compute Engine service account..."
-        
+
         local default_sa="${PROJECT_ID//-/}@${PROJECT_ID}.iam.gserviceaccount.com"
         local compute_sa="$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)" 2>/dev/null)-compute@developer.gserviceaccount.com"
-        
+
         if gcloud iam service-accounts describe "$compute_sa" --project="$PROJECT_ID" &> /dev/null; then
             log_info "Default Compute Engine service account found."
         else
             log_warn "Default Compute Engine service account not found."
             log_info "Creating a service account for Packer builds..."
-            
+
             local sa_name="packer-builder"
             local sa_email="${sa_name}@${PROJECT_ID}.iam.gserviceaccount.com"
-            
+
             if ! gcloud iam service-accounts describe "$sa_email" --project="$PROJECT_ID" &> /dev/null; then
                 gcloud iam service-accounts create "$sa_name" \
                     --project="$PROJECT_ID" \
                     --display-name="Packer Builder" \
                     --description="Service account for Packer image builds"
-                
+
                 # Grant necessary permissions
                 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
                     --member="serviceAccount:$sa_email" \
                     --role="roles/compute.instanceAdmin.v1" \
                     --quiet
-                    
+
                 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
                     --member="serviceAccount:$sa_email" \
                     --role="roles/iam.serviceAccountUser" \
                     --quiet
-                
+
                 log_info "Created service account: $sa_email"
             fi
-            
+
             SERVICE_ACCOUNT_EMAIL="$sa_email"
         fi
     fi
@@ -234,7 +234,7 @@ log_info "Starting Buildkite Elastic CI Stack GCP image build..."
 log_info "Configuration:"
 log_info "  Project ID: $PROJECT_ID"
 log_info "  Zone: $ZONE"
-log_info "  Machine Type: $MACHINE_TYPE" 
+log_info "  Machine Type: $MACHINE_TYPE"
 log_info "  Architecture: $ARCH"
 log_info "  Build Number: $BUILD_NUMBER"
 log_info "  Agent Version: $AGENT_VERSION"
