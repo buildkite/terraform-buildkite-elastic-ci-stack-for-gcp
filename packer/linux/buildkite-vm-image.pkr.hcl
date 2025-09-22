@@ -9,7 +9,7 @@ packer {
 
 variable "arch" {
   type    = string
-  default = "x86-64"
+  default = "x86_64"
 }
 
 variable "machine_type" {

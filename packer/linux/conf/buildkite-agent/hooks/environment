@@ -29,7 +29,4 @@ export BUILDKITE_GCP_INSTANCE_ID=$(gcp-metadata instance-id 2>/dev/null || echo 
 export BUILDKITE_GCP_INSTANCE_NAME=$(gcp-metadata instance-name 2>/dev/null || echo "unknown")
 export BUILDKITE_GCP_MACHINE_TYPE=$(gcp-metadata machine-type 2>/dev/null || echo "unknown")
 
-# Set up Git configuration for the buildkite-agent user
-export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-
 echo "Environment setup complete"

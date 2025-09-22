@@ -19,21 +19,13 @@ sudo -E apt-get upgrade -y
 echo "Installing essential utilities..."
 sudo -E apt-get install -yq \
   build-essential \
-  curl \
   git \
-  jq \
   mdadm \
-  nvme-cli \
   pigz \
-  python3 \
   python3-pip \
   python3-setuptools \
   unzip \
-  wget \
   zip \
-  ca-certificates \
-  gnupg \
-  lsb-release \
   locales
 
 # Additional useful tools for CI/CD environments
@@ -42,19 +34,6 @@ sudo -E apt-get install -yq \
   lsof \
   rsyslog \
   apt-transport-https
-
-echo "Installing development tools..."
-sudo -E apt-get install -yq \
-  autoconf \
-  automake \
-  bison \
-  flex \
-  gcc \
-  g++ \
-  make \
-  patch \
-  libtool \
-  pkg-config
 
 echo "Enabling rsyslog service..."
 sudo systemctl enable --now rsyslog
