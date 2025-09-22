@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # Terminate GCP instance gracefully
@@ -9,18 +9,18 @@ echo "--- Terminating GCP instance"
 
 # Get instance information
 PROJECT_ID=$(gcp-metadata project-id 2>/dev/null || echo "unknown")
-ZONE=$(gcp-metadata zone 2>/dev/null || echo "unknown") 
+ZONE=$(gcp-metadata zone 2>/dev/null || echo "unknown")
 INSTANCE_NAME=$(gcp-metadata instance-name 2>/dev/null || echo "unknown")
 
 echo "Instance details:"
 echo "  Project: $PROJECT_ID"
-echo "  Zone: $ZONE"  
+echo "  Zone: $ZONE"
 echo "  Instance: $INSTANCE_NAME"
 
 # Log the termination request
 logger "Buildkite agent requesting instance termination: $INSTANCE_NAME"
 
-# In a real deployment, this would authenticate and terminate the instance
+# We'll need to determine the appropriate method for terminating the instance
 # For now, we'll just prepare the system for shutdown
 echo "Preparing system for termination..."
 
