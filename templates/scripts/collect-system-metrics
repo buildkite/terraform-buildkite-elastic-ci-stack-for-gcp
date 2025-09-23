@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Basic system metrics collection
+# Placeholder for future ops-agent integration
+
+set -euo pipefail
+
+# Collect basic system information
+echo "System Metrics Collection - $(date)"
+echo "CPU Usage: $(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)"
+echo "Memory Usage: $(free | grep Mem | awk '{printf "%.2f%%", $3/$2 * 100.0}')"
+echo "Disk Usage: $(df -h / | awk 'NR==2{printf "%s", $5}')"
+echo "Load Average: $(uptime | awk -F'load average:' '{print $2}')"
+echo "---"

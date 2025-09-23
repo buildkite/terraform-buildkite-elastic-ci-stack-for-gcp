@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Fix permissions for buildkite agent builds directory
+echo "Fixing buildkite agent builds permissions..."
+
+if [ -d /var/lib/buildkite-agent/builds ]; then
+  sudo chown -R buildkite-agent:buildkite-agent /var/lib/buildkite-agent/builds
+  sudo chmod -R 755 /var/lib/buildkite-agent/builds
+  echo "Permissions fixed for /var/lib/buildkite-agent/builds"
+else
+  echo "Builds directory not found, creating it..."
+  sudo mkdir -p /var/lib/buildkite-agent/builds
+  sudo chown -R buildkite-agent:buildkite-agent /var/lib/buildkite-agent/builds
+fi
