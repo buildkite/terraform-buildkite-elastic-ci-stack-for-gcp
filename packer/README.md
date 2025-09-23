@@ -6,32 +6,28 @@ This directory contains the Packer configuration and build scripts for creating 
 
 From this directory (`packer/`):
 
-1. **Validate the environment**:
+1. **Build the image**:
    ```bash
-   ./validate.sh
+   ./build --project-id your-gcp-project-id
    ```
 
-2. **Build the image**:
-   ```bash
-   ./build.sh --project-id your-gcp-project-id
-   ```
+The build script includes built-in validation and will check your environment before building.
 
 ## Directory Structure
 
 ```
 packer/
-├── bootstrap.sh                # Bootstrap script
-├── build.sh                    # Main build script
-├── validate.sh                 # Environment validation
-├── README.md                   # This file
+├── bootstrap                # Bootstrap script
+├── build                    # Main build script with validation
+├── README.md                # This file
 └── linux/
     ├── buildkite-vm-image.pkr.hcl  # Packer configuration
     ├── scripts/                     # Installation scripts
-    │   ├── install-utils.sh
-    │   ├── install-buildkite-agent.sh
-    │   ├── install-buildkite-utils.sh
-    │   ├── install-gcp-tools.sh
-    │   └── cleanup.sh
+    │   ├── install-utils
+    │   ├── install-buildkite-agent
+    │   ├── install-buildkite-utils
+    │   ├── install-gcp-tools
+    │   └── cleanup
     └── conf/                        # Configuration files
         └── buildkite-agent/
             ├── hooks/
@@ -62,17 +58,17 @@ packer/
 
 ### Basic Build
 ```bash
-./build.sh --project-id my-gcp-project
+./build --project-id my-gcp-project
 ```
 
 ### ARM64 Build
 ```bash
-./build.sh --project-id my-gcp-project --arch arm64 --zone us-central1-a
+./build --project-id my-gcp-project --arch arm64 --zone us-central1-a
 ```
 
 ### Custom Configuration
 ```bash
-./build.sh \
+./build \
   --project-id my-gcp-project \
   --zone us-west1-a \
   --machine-type c2-standard-8 \
@@ -84,7 +80,7 @@ packer/
 
 Enable Packer logging:
 ```bash
-PACKER_LOG=1 ./build.sh --project-id your-project
+PACKER_LOG=1 ./build --project-id your-project
 ```
 
 ### Manual Packer Commands
@@ -105,7 +101,7 @@ packer build \
   buildkite-vm-image.pkr.hcl
 ```
 
-**Note**: The build script (`./build.sh`) handles the directory changes automatically, so you can run it from the `packer/` directory.
+**Note**: The build script (`./build`) handles the directory changes automatically, so you can run it from the `packer/` directory.
 
 ## Notes
 
