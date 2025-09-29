@@ -1,0 +1,30 @@
+[Unit]
+Description=Buildkite Agent (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=buildkite-agent
+Group=buildkite-agent
+Environment=HOME=/var/lib/buildkite-agent
+Environment=USER=buildkite-agent
+WorkingDirectory=/var/lib/buildkite-agent
+ExecStartPre=/usr/bin/fix-buildkite-agent-builds-permissions
+ExecStart=/usr/bin/buildkite-agent-stable start
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=120s
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65536
+
+# Security settings
+PrivateDevices=false
+ProtectSystem=false
+ProtectHome=false
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Monitor for GCP preemptible instance termination
+# Similar to AWS spot instance termination monitoring
+
+set -euo pipefail
+
+METADATA_URL="http://metadata.google.internal/computeMetadata/v1/instance/preempted"
+HEADERS="Metadata-Flavor: Google"
+
+while true; do
+  if curl -s -H "${HEADERS}" "${METADATA_URL}" 2>/dev/null | grep -q "TRUE"; then
+    echo "Instance is being preempted, initiating graceful shutdown..."
+    /usr/local/bin/stop-agent-gracefully
+    break
+  fi
+  sleep 10
+done

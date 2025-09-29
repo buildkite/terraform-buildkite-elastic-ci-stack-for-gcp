@@ -1,0 +1,9 @@
+token="$BUILDKITE_TOKEN"
+name="%hostname-%n"
+tags="queue=$BUILDKITE_QUEUE,$BUILDKITE_TAGS,os=linux,architecture=x86_64"
+build-path="/var/lib/buildkite-agent/builds"
+hooks-path="/etc/buildkite-agent/hooks"
+plugins-path="/var/lib/buildkite-agent/plugins"
+git-clone-flags="-v"
+disconnect-after-job=true
+disconnect-after-idle-timeout=300

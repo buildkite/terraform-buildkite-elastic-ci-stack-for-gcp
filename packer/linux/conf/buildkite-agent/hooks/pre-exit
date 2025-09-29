@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Pre-exit hook for Buildkite agent
+# Runs before the agent shuts down
+
+echo "--- Running pre-exit hook"
+
+# Clean up build artifacts if configured
+if [[ "${BUILDKITE_CLEAN_CHECKOUT:-false}" == "true" ]]; then
+  echo "Cleaning up build checkout"
+  rm -rf "${BUILDKITE_BUILD_CHECKOUT_PATH:-/var/lib/buildkite-agent/builds/*}" || true
+fi
+
+# Clean up any temporary files
+echo "Cleaning up temporary files"
+find /tmp -name "buildkite-*" -type f -mtime +1 -delete 2>/dev/null || true
+
+# Log exit
+echo "Buildkite agent pre-exit hook completed"

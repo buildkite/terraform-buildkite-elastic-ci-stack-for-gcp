@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# GCP Instance Metadata Helper
+# Similar functionality to AWS instance metadata service
+
+set -euo pipefail
+
+METADATA_URL="http://metadata.google.internal/computeMetadata/v1"
+HEADERS="Metadata-Flavor: Google"
+
+case "${1:-}" in
+  "zone")
+    curl -s -H "${HEADERS}" "${METADATA_URL}/instance/zone" | cut -d'/' -f4
+    ;;
+  "instance-id")
+    curl -s -H "${HEADERS}" "${METADATA_URL}/instance/id"
+    ;;
+  "instance-name")
+    curl -s -H "${HEADERS}" "${METADATA_URL}/instance/name"
+    ;;
+  "project-id")
+    curl -s -H "${HEADERS}" "${METADATA_URL}/project/project-id"
+    ;;
+  "machine-type")
+    curl -s -H "${HEADERS}" "${METADATA_URL}/instance/machine-type" | cut -d'/' -f4
+    ;;
+  "preempted")
+    curl -s -H "${HEADERS}" "${METADATA_URL}/instance/preempted" 2>/dev/null || echo "FALSE"
+    ;;
+  "help"|"--help"|"-h")
+    echo "Usage: gcp-metadata [zone|instance-id|instance-name|project-id|machine-type|preempted]"
+    echo "Retrieves GCP instance metadata similar to AWS instance metadata service"
+    ;;
+  *)
+    echo "Unknown metadata type: ${1:-}"
+    echo "Use 'gcp-metadata help' for available options"
+    exit 1
+    ;;
+esac

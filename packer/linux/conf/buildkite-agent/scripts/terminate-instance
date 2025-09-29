@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Terminate GCP instance gracefully
+echo "--- Terminating GCP instance"
+
+# First, stop the buildkite agent gracefully
+/usr/local/bin/stop-agent-gracefully
+
+# Get instance information
+PROJECT_ID=$(gcp-metadata project-id 2>/dev/null || echo "unknown")
+ZONE=$(gcp-metadata zone 2>/dev/null || echo "unknown")
+INSTANCE_NAME=$(gcp-metadata instance-name 2>/dev/null || echo "unknown")
+
+echo "Instance details:"
+echo "  Project: $PROJECT_ID"
+echo "  Zone: $ZONE"
+echo "  Instance: $INSTANCE_NAME"
+
+# Log the termination request
+logger "Buildkite agent requesting instance termination: $INSTANCE_NAME"
+
+# We'll need to determine the appropriate method for terminating the instance
+# For now, we'll just prepare the system for shutdown
+echo "Preparing system for termination..."
+
+# Clean up any remaining processes
+sudo pkill -f buildkite-agent || true
+
+# Sync filesystem
+sync
+
+echo "Instance ready for termination"
+echo "Note: Actual GCP instance termination should be handled by external tooling"
+echo "      with proper authentication and permissions."

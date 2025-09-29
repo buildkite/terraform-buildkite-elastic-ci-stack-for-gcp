@@ -1,0 +1,15 @@
+[Unit]
+Description=Lifecycled - Handle GCP instance lifecycle events
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/lifecycled
+Environment=LIFECYCLED_HANDLER="/usr/local/bin/stop-agent-gracefully"
+Environment=LIFECYCLED_DEBUG="true"
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

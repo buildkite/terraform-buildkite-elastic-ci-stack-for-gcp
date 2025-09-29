@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Startup script for Buildkite agent VM instances
+# This script configures and starts the Buildkite agent on first boot
+
+echo "Starting Buildkite agent configuration..."
+
+# Get metadata values
+get_metadata() {
+    local key="$1"
+    local default="${2:-}"
+    curl -s -f -H "Metadata-Flavor: Google" \
+        "http://metadata.google.internal/computeMetadata/v1/instance/attributes/$key" 2>/dev/null || echo "$default"
+}
+
+# Required: Buildkite agent token
+BUILDKITE_TOKEN=$(get_metadata "buildkite-token")
+if [[ -z "$BUILDKITE_TOKEN" ]]; then
+    echo "ERROR: buildkite-token not found in metadata"
+    echo "Please set the buildkite-token metadata when creating the instance"
+    exit 1
+fi
+
+# Optional configuration
+BUILDKITE_AGENT_NAME=$(get_metadata "buildkite-agent-name" "$(hostname)")
+BUILDKITE_QUEUE=$(get_metadata "buildkite-queue" "default")
+BUILDKITE_PRIORITY=$(get_metadata "buildkite-priority" "1")
+BUILDKITE_TAGS=$(get_metadata "buildkite-tags" "")
+
+# Additional environment variables
+PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/project/project-id")
+ZONE=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/zone" | cut -d'/' -f4)
+INSTANCE_NAME=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/name")
+
+echo "Configuring Buildkite agent with:"
+echo "  Name: $BUILDKITE_AGENT_NAME"
+echo "  Queue: $BUILDKITE_QUEUE"
+echo "  Priority: $BUILDKITE_PRIORITY"
+echo "  Tags: $BUILDKITE_TAGS"
+
+# Create Buildkite agent configuration file
+sudo mkdir -p /etc/buildkite-agent
+
+envsubst < /tmp/templates/config/buildkite-agent.cfg.template | sudo tee /etc/buildkite-agent/buildkite-agent.cfg
+
+# Set proper ownership
+sudo chown buildkite-agent:buildkite-agent /etc/buildkite-agent/buildkite-agent.cfg
+sudo chmod 640 /etc/buildkite-agent/buildkite-agent.cfg
+
+# Create environment file for additional variables
+envsubst < /tmp/templates/config/buildkite-agent-env.template | sudo tee /etc/buildkite-agent/env
+
+sudo chown buildkite-agent:buildkite-agent /etc/buildkite-agent/env
+sudo chmod 640 /etc/buildkite-agent/env
+
+# Fix permissions for buildkite agent directories
+sudo /usr/bin/fix-buildkite-agent-builds-permissions
+
+# Enable and start the buildkite-agent service
+sudo systemctl daemon-reload
+sudo systemctl enable buildkite-agent
+sudo systemctl start buildkite-agent
+
+# Enable and start preemption monitoring
+sudo systemctl enable preemption-monitor
+sudo systemctl start preemption-monitor
+
+# Wait a moment for the service to start
+sleep 5
+
+# Check if the service started successfully
+if sudo systemctl is-active --quiet buildkite-agent; then
+    echo "✅ Buildkite agent started successfully"
+    echo "Agent status:"
+    sudo systemctl status buildkite-agent --no-pager -l
+else
+    echo "❌ Failed to start Buildkite agent"
+    echo "Service status:"
+    sudo systemctl status buildkite-agent --no-pager -l
+    echo "Service logs:"
+    sudo journalctl -u buildkite-agent --no-pager -n 20
+    exit 1
+fi
+
+echo "🎉 Buildkite agent configuration complete!"
+echo ""
+echo "You can:"
+echo "  • Check status: sudo systemctl status buildkite-agent"
+echo "  • View logs: sudo journalctl -u buildkite-agent -f"
+echo "  • Check config: sudo cat /etc/buildkite-agent/buildkite-agent.cfg"

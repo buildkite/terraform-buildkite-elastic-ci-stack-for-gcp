@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Environment hook for Buildkite agent on GCP
+# This hook sets up the environment for each build
+
+echo "--- Setting up build environment"
+
+# Load local environment file if it exists
+if [[ -f /etc/buildkite-agent/env ]]; then
+  echo "Loading environment from /etc/buildkite-agent/env"
+  set -a
+  source /etc/buildkite-agent/env
+  set +a
+fi
+
+# Load secrets from local environment (not S3 as per v1.0.0 requirements)
+if [[ -f /etc/buildkite-agent/secrets ]]; then
+  echo "Loading secrets from local file"
+  set -a
+  source /etc/buildkite-agent/secrets
+  set +a
+fi
+
+# Set GCP-specific environment variables
+export BUILDKITE_GCP_PROJECT_ID=$(gcp-metadata project-id 2>/dev/null || echo "unknown")
+export BUILDKITE_GCP_ZONE=$(gcp-metadata zone 2>/dev/null || echo "unknown")
+export BUILDKITE_GCP_INSTANCE_ID=$(gcp-metadata instance-id 2>/dev/null || echo "unknown")
+export BUILDKITE_GCP_INSTANCE_NAME=$(gcp-metadata instance-name 2>/dev/null || echo "unknown")
+export BUILDKITE_GCP_MACHINE_TYPE=$(gcp-metadata machine-type 2>/dev/null || echo "unknown")
+
+echo "Environment setup complete"

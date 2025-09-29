@@ -1,0 +1,16 @@
+token="$BUILDKITE_TOKEN"
+name="$BUILDKITE_AGENT_NAME"
+tags="queue=$BUILDKITE_QUEUE,gcp-project=$PROJECT_ID,gcp-zone=$ZONE,gcp-instance=$INSTANCE_NAME,$BUILDKITE_TAGS"
+priority=$BUILDKITE_PRIORITY
+build-path="/var/lib/buildkite-agent/builds"
+hooks-path="/etc/buildkite-agent/hooks"
+plugins-path="/var/lib/buildkite-agent/plugins"
+git-mirrors-path="/var/lib/buildkite-agent/git-mirrors"
+spawn=1
+cancel-grace-period=10
+disconnect-after-job=false
+disconnect-after-idle-timeout=0
+shell-options="-euo pipefail"
+timestamp-lines=true
+health-check-addr=":8080"
+debug=false
