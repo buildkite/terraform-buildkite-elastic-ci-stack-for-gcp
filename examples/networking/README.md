@@ -120,9 +120,3 @@ To destroy the infrastructure:
 terraform destroy
 ```
 
-## Next Steps
-
-This networking module provides the foundation for deploying Buildkite agents. You'll typically use this with additional modules for:
-- Compute instance templates
-- Managed instance groups
-- Auto-scaling configurations
