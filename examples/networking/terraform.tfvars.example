@@ -1,0 +1,26 @@
+# Example terraform.tfvars file
+# Copy this to terraform.tfvars and customize the values
+
+# Required: Your GCP project ID
+project = "your-gcp-project-id"
+
+# Optional: Customize the region (defaults to us-central1)
+region = "us-central1"
+
+# Optional: Customize the network name (defaults to elastic-ci-stack-example)
+network_name = "my-elastic-ci-stack"
+
+# Optional: Control SSH access (defaults to true)
+enable_ssh_access = true
+
+# Optional: Restrict SSH access to specific IP ranges (defaults to 0.0.0.0/0)
+ssh_source_ranges = ["203.0.113.0/24", "198.51.100.0/24"]
+
+# Optional: Use a custom instance tag (defaults to elastic-ci-agent)
+instance_tag = "my-ci-agent"
+
+# Optional: Enable IAP access for secure SSH (defaults to false)
+enable_iap_access = true
+
+# Optional: Enable secondary ranges for future GKE support (defaults to false)
+enable_secondary_ranges = false
