@@ -1,0 +1,15 @@
+# GCP Project Configuration
+project = "my-gcp-project-id"
+region  = "us-central1"
+
+# Service Account IDs (optional - defaults provided)
+# agent_service_account_id   = "elastic-ci-agent"
+# metrics_service_account_id = "elastic-ci-metrics"
+
+# Custom IAM Role IDs (optional - defaults provided)
+# agent_custom_role_id   = "elasticCiAgentInstanceMgmt"
+# metrics_custom_role_id = "elasticCiMetricsAutoscaler"
+
+# Feature Flags
+# enable_secret_access  = true
+# enable_storage_access = false
