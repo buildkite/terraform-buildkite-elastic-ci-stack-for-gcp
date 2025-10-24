@@ -3,8 +3,12 @@ variable "project_id" {
   type        = string
 
   validation {
-    condition     = can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$", var.project_id))
-    error_message = "Project ID must be a valid GCP project identifier."
+    condition = (
+      can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$", var.project_id)) &&
+      !can(regex("--", var.project_id)) &&
+      !can(regex("(?i)google", var.project_id))  # Case-insensitive check for "google"
+    )
+    error_message = "Project ID must be 6-30 characters, start with a letter, contain only lowercase letters, numbers, and single hyphens, and cannot contain the word 'google'."
   }
 }
 
