@@ -55,11 +55,12 @@ module "compute" {
   root_disk_size_gb = var.root_disk_size_gb
   root_disk_type    = var.root_disk_type
 
-  buildkite_agent_token   = var.buildkite_agent_token
-  buildkite_agent_release = var.buildkite_agent_release
-  buildkite_queue         = var.buildkite_queue
-  buildkite_agent_tags    = var.buildkite_agent_tags
-  buildkite_api_endpoint  = var.buildkite_api_endpoint
+  buildkite_agent_token        = var.buildkite_agent_token
+  buildkite_agent_token_secret = var.buildkite_agent_token_secret
+  buildkite_agent_release      = var.buildkite_agent_release
+  buildkite_queue              = var.buildkite_queue
+  buildkite_agent_tags         = var.buildkite_agent_tags
+  buildkite_api_endpoint       = var.buildkite_api_endpoint
 
   min_size                = var.min_size
   max_size                = var.max_size

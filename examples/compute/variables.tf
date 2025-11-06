@@ -106,9 +106,16 @@ variable "root_disk_type" {
 }
 
 variable "buildkite_agent_token" {
-  description = "Buildkite agent registration token"
+  description = "Buildkite agent registration token (leave empty if using buildkite_agent_token_secret)"
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+variable "buildkite_agent_token_secret" {
+  description = "GCP Secret Manager secret name containing Buildkite agent token (e.g. 'buildkite-agent-token')"
+  type        = string
+  default     = ""
 }
 
 variable "buildkite_agent_release" {
