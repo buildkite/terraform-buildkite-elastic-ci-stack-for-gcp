@@ -150,6 +150,24 @@ build {
     script = "scripts/install-gcp-tools"
   }
 
+  # Google Cloud Ops Agent for centralized logging and monitoring
+  provisioner "shell" {
+    script = "scripts/install-ops-agent"
+  }
+
+  # Configure rsyslog to route systemd service logs to files
+  provisioner "shell" {
+    inline = [
+      "echo 'Installing rsyslog configuration for service logs...'",
+      "sudo cp /tmp/conf/rsyslog/buildkite-logging.conf /etc/rsyslog.d/10-buildkite-logging.conf",
+      "sudo chown root:root /etc/rsyslog.d/10-buildkite-logging.conf",
+      "sudo chmod 644 /etc/rsyslog.d/10-buildkite-logging.conf",
+      "echo 'Restarting rsyslog service...'",
+      "sudo systemctl restart rsyslog",
+      "echo 'Rsyslog configuration installed'"
+    ]
+  }
+
   # Final cleanup
   provisioner "shell" {
     script = "scripts/cleanup"
