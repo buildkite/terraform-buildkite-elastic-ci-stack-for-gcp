@@ -13,6 +13,20 @@ From this directory (`packer/`):
 
 The build script includes built-in validation and will check your environment before building.
 
+## What's Included
+
+The custom VM image includes:
+
+- **Buildkite Agent**: Pre-installed and configured
+- **Docker Engine**: With Compose v2 (2.38.2) and Buildx (0.26.1)
+- **Multi-Architecture Support**: Cross-platform builds (ARM/x86)
+- **Automated Cleanup**: Hourly Docker garbage collection
+- **Disk Protection**: Self-healing when disk space is low
+- **System Utilities**: Essential tools for CI/CD workloads
+- **GCP Integration**: Cloud Ops Agent for centralized logging
+
+See [DOCKER.md](../DOCKER.md) for complete Docker features.
+
 ## Directory Structure
 
 ```
@@ -26,14 +40,22 @@ packer/
     │   ├── install-utils
     │   ├── install-buildkite-agent
     │   ├── install-buildkite-utils
+    │   ├── install-docker
+    │   ├── configure-docker
     │   ├── install-gcp-tools
     │   └── cleanup
     └── conf/                        # Configuration files
-        └── buildkite-agent/
-            ├── hooks/
-            ├── scripts/
-            ├── systemd/
-            └── sudoers.conf
+        ├── buildkite-agent/
+        │   ├── hooks/
+        │   ├── scripts/
+        │   ├── systemd/
+        │   └── sudoers.conf
+        ├── docker/
+        │   ├── daemon.json          # Docker configuration
+        │   ├── scripts/             # GC and disk check scripts
+        │   └── systemd/             # Timer units
+        └── ops-agent/
+            └── config.yaml          # Logging configuration
 ```
 
 ## Prerequisites
@@ -110,16 +132,3 @@ packer build \
 - All scripts are validated for syntax and made executable automatically
 - The build process creates a new image with timestamp-based naming
 - Build artifacts are minimal - the installation scripts handle missing files gracefully
-
-## Next Steps
-
-After building the image:
-
-1. **Deploy VMs**: Use the deployment guide in `../DEPLOYMENT.md`
-2. **Test the image**: Create a test instance and verify agent functionality
-3. **Scale deployment**: Use instance templates and managed instance groups
-
-For complete deployment instructions, see:
-- `../DEPLOYMENT.md` - Comprehensive deployment guide
-- `../QUICK-REFERENCE.md` - Essential commands
-- `../examples/` - Example scripts and configurations

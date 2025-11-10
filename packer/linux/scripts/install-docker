@@ -1,0 +1,90 @@
+#!/bin/bash
+set -euxo pipefail
+
+echo "Installing Docker..."
+
+# Install Docker from official Docker repository for Debian
+sudo apt-get update
+sudo apt-get install -y \
+  ca-certificates \
+  curl \
+  gnupg \
+  lsb-release
+
+# Add Docker's official GPG key
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+# Set up Docker repository
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install Docker Engine
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+
+# Enable and start Docker
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# Add buildkite-agent user to docker group
+sudo usermod -a -G docker buildkite-agent
+
+echo "Installing Docker Compose v2 and Buildx plugins..."
+
+# Detect architecture
+ARCH=$(uname -m)
+case "$ARCH" in
+  x86_64)
+    DOCKER_COMPOSE_V2_ARCH="x86_64"
+    DOCKER_BUILDX_ARCH="amd64"
+    ;;
+  aarch64)
+    DOCKER_COMPOSE_V2_ARCH="aarch64"
+    DOCKER_BUILDX_ARCH="arm64"
+    ;;
+  *)
+    echo "Unsupported architecture: $ARCH"
+    exit 1
+    ;;
+esac
+
+# Plugin versions
+DOCKER_COMPOSE_V2_VERSION="2.38.2"
+DOCKER_BUILDX_VERSION="0.26.1"
+
+# Create plugin directory
+sudo mkdir -p /usr/libexec/docker/cli-plugins
+
+# Install Docker Buildx
+echo "Installing Docker Buildx v${DOCKER_BUILDX_VERSION}..."
+sudo curl -L -o /usr/libexec/docker/cli-plugins/docker-buildx \
+  "https://github.com/docker/buildx/releases/download/v${DOCKER_BUILDX_VERSION}/buildx-v${DOCKER_BUILDX_VERSION}.linux-${DOCKER_BUILDX_ARCH}"
+sudo chmod +x /usr/libexec/docker/cli-plugins/docker-buildx
+
+# Install Docker Compose v2
+echo "Installing Docker Compose v${DOCKER_COMPOSE_V2_VERSION}..."
+sudo curl -L -o /usr/libexec/docker/cli-plugins/docker-compose \
+  "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_V2_VERSION}/docker-compose-linux-${DOCKER_COMPOSE_V2_ARCH}"
+sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+
+# Create backward compatibility symlink for docker-compose v1 commands
+sudo ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose
+
+echo "Installing multi-architecture support..."
+
+# Install QEMU and binfmt for multi-arch builds
+sudo apt-get install -y qemu-user-static binfmt-support
+
+# Enable binfmt service for cross-platform builds
+sudo systemctl enable binfmt-support
+sudo systemctl start binfmt-support
+
+# Verify Docker installation
+docker --version
+docker compose version
+docker buildx version
+
+echo "Docker installation complete!"
