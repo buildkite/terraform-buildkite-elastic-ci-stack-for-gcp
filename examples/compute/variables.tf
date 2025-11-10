@@ -15,72 +15,36 @@ variable "zones" {
   default     = ["us-central1-a", "us-central1-b", "us-central1-c"]
 }
 
-variable "network_name" {
-  description = "Name of the VPC network"
-  type        = string
-  default     = "elastic-ci-stack"
-}
-
 variable "stack_name" {
   description = "Name of the Elastic CI Stack"
   type        = string
   default     = "elastic-ci-stack"
 }
 
-variable "enable_ssh_access" {
-  description = "Enable SSH access to instances"
-  type        = bool
-  default     = true
+# Networking module outputs (required)
+variable "network_self_link" {
+  description = "Self link of the VPC network (from networking module)"
+  type        = string
 }
 
-variable "ssh_source_ranges" {
-  description = "CIDR blocks allowed to SSH"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
+variable "subnet_self_link" {
+  description = "Self link of the subnet (from networking module)"
+  type        = string
 }
 
 variable "instance_tag" {
-  description = "Network tag for instances"
+  description = "Network tag for instances (from networking module)"
   type        = string
   default     = "elastic-ci-agent"
 }
 
-variable "agent_service_account_id" {
-  description = "Service account ID for Buildkite agents"
+# IAM module outputs (required)
+variable "agent_service_account_email" {
+  description = "Email of the agent service account (from IAM module)"
   type        = string
-  default     = "elastic-ci-agent"
 }
 
-variable "metrics_service_account_id" {
-  description = "Service account ID for metrics function"
-  type        = string
-  default     = "elastic-ci-metrics"
-}
-
-variable "agent_custom_role_id" {
-  description = "Custom role ID for agent instance management"
-  type        = string
-  default     = "elasticCiAgentInstanceMgmt"
-}
-
-variable "metrics_custom_role_id" {
-  description = "Custom role ID for metrics autoscaling"
-  type        = string
-  default     = "elasticCiMetricsAutoscaler"
-}
-
-variable "enable_secret_access" {
-  description = "Enable Secret Manager access for agents"
-  type        = bool
-  default     = false
-}
-
-variable "enable_storage_access" {
-  description = "Enable Cloud Storage access for agents"
-  type        = bool
-  default     = false
-}
-
+# Instance configuration
 variable "machine_type" {
   description = "GCP machine type for agent instances"
   type        = string
@@ -105,6 +69,7 @@ variable "root_disk_type" {
   default     = "pd-balanced"
 }
 
+# Buildkite configuration
 variable "buildkite_agent_token" {
   description = "Buildkite agent registration token (leave empty if using buildkite_agent_token_secret)"
   type        = string
@@ -142,6 +107,7 @@ variable "buildkite_api_endpoint" {
   default     = "https://agent.buildkite.com/v3"
 }
 
+# Autoscaling configuration
 variable "min_size" {
   description = "Minimum number of instances"
   type        = number
@@ -166,6 +132,13 @@ variable "autoscaling_jobs_per_instance" {
   default     = 1
 }
 
+variable "enable_autoscaling" {
+  description = "Enable autoscaling based on custom Buildkite metrics (requires buildkite-agent-metrics function)"
+  type        = bool
+  default     = false
+}
+
+# Health check configuration
 variable "enable_autohealing" {
   description = "Enable autohealing for unhealthy instances"
   type        = bool
@@ -178,14 +151,9 @@ variable "health_check_initial_delay_sec" {
   default     = 300
 }
 
+# Labels
 variable "labels" {
   description = "Additional labels to apply to instances"
   type        = map(string)
   default     = {}
-}
-
-variable "enable_autoscaling" {
-  description = "Enable autoscaling based on custom Buildkite metrics (requires buildkite-agent-metrics function)"
-  type        = bool
-  default     = false
 }
