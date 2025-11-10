@@ -18,6 +18,12 @@ This example creates:
    - Service account key file
    - Workload identity (for CI/CD)
 4. **Buildkite Agent Token**: Get your agent token from Buildkite organization settings
+5. **Custom VM Image** (recommended): Build the Packer image for Docker support:
+   ```bash
+   cd ../../packer
+   ./build --project-id your-gcp-project-id
+   ```
+   See [packer/README.md](../../packer/README.md) for details.
 
 ## Required APIs
 
@@ -94,6 +100,9 @@ zones                 = ["us-central1-a", "us-central1-b", "us-central1-c"]
 buildkite_agent_token = "your-buildkite-agent-token"
 buildkite_queue       = "default"
 buildkite_agent_tags  = "os=linux,environment=production,region=us-central1"
+
+# Use custom image for Docker support
+image                 = "buildkite-ci-stack"
 
 machine_type          = "n1-standard-4"
 root_disk_size_gb     = 100
@@ -303,8 +312,21 @@ terraform destroy
    enable_integrity_monitoring = true
    ```
 
+## Docker Support
+
+This example supports Docker out of the box when using the custom Packer image:
+
+- **Docker Engine**: Pre-installed with Compose v2 and Buildx
+- **Multi-Architecture Builds**: Cross-platform builds (ARM/x86)
+- **Automated Cleanup**: Hourly garbage collection to prevent disk issues
+- **Disk Space Protection**: Self-healing when disk space is low
+
+See [DOCKER.md](../../DOCKER.md) for complete Docker features and usage.
+
 ## Additional Resources
 
+- [Docker Support Documentation](../../DOCKER.md)
+- [Packer Build Guide](../../packer/README.md)
 - [Buildkite Agent Documentation](https://buildkite.com/docs/agent/v3)
 - [GCP Compute Engine Documentation](https://cloud.google.com/compute/docs)
 - [GCP Instance Groups](https://cloud.google.com/compute/docs/instance-groups)
