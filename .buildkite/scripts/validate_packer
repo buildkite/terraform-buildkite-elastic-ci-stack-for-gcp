@@ -2,4 +2,4 @@
 
 echo "Running Packer validation..."
 
-packer validate packer/linux/
+packer validate packer/linux/buildkite-vm-image.pkr.hcl
