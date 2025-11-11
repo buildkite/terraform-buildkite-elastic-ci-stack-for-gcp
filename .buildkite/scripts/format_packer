@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-echo "Formatting Packer files..."
-packer fmt -recursive -check -diff -write=false packer/linux/buildkite-vm-image.pkr.hcl
+echo "Checking Packer file formatting..."
+packer fmt -check -diff packer/linux/
+
+echo "✅ Packer formatting check passed!"
