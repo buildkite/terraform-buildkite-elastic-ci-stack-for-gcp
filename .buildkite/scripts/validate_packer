@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+echo "Initializing Packer config..."
+
+packer init packer/linux/buildkite-vm-image.pkr.hcl
+
 echo "Running Packer validation..."
 
 packer validate packer/linux/buildkite-vm-image.pkr.hcl
