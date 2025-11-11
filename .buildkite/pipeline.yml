@@ -35,8 +35,7 @@ steps:
         key: terraform-fmt
         if_changed:
           - "*.tf"
-        command: |
-          .buildkite/scripts/format_check
+        command: .buildkite/scripts/format_check
         plugins:
           - *terraform_docker
 
@@ -53,8 +52,7 @@ steps:
         key: tflint
         if_changed:
           - "*.tf"
-        command: |
-          .buildkite/scripts/tflint
+        command: .buildkite/scripts/tflint
         plugins:
           - *tflint
 
@@ -62,8 +60,7 @@ steps:
         key: tfsec
         if_changed:
           - "*.tf"
-        command: |
-          .buildkite/scripts/tfsec
+        command: .buildkite/scripts/tfsec
         plugins:
           - *tfsec
 
@@ -73,8 +70,7 @@ steps:
         key: packer-fmt
         if_changed:
           - "packer/linux/buildkite-vm-image.pkr.hcl"
-        command: |
-          .buildkite/scripts/packer_format
+        command: .buildkite/scripts/packer_format
         plugins:
           - *packer
 
@@ -100,8 +96,7 @@ steps:
         key: terraform-validate-examples
         if_changed:
           - "examples/*"
-        command: |
-          .buildkite/scripts/validate_examples
+        command: .buildkite/scripts/validate_examples
         plugins:
           - *terraform_docker
 
