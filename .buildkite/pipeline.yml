@@ -23,6 +23,7 @@ definitions:
     docker#v5.11.0:
       image: "davidanson/markdownlint-cli2:latest"
       workdir: "/workdir"
+      command: [".", "--config", ".markdownlint.json"]
   shellcheck: &shellcheck
     shellcheck#v1.4.0:
       files: "**/*.sh"
