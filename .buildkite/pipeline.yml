@@ -26,8 +26,7 @@ definitions:
       entrypoint: "/bin/sh"
   shellcheck: &shellcheck
     shellcheck#v1.4.0:
-      files: **/*.sh
-
+      files: "**/*.sh"
 
 steps:
   - group: ":terraform: Root Modules"
