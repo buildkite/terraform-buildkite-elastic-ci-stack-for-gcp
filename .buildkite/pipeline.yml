@@ -23,7 +23,6 @@ definitions:
     docker#v5.11.0:
       image: "davidanson/markdownlint-cli2:latest"
       workdir: "/workdir"
-      entrypoint: "/bin/sh"
   shellcheck: &shellcheck
     shellcheck#v1.4.0:
       files: "**/*.sh"
@@ -79,14 +78,13 @@ steps:
         soft_fail: true
         if_changed:
           - "packer/linux/"
-        command: |
-          .buildkite/scripts/packer_validate
-          echo "⚠️ This soft fails due to strict arch naming rules."
+        command: .buildkite/scripts/packer_validate && echo "⚠️ This soft fails due to strict arch naming rules."
         plugins:
           - *packer
 
       - label: ":bash: ShellCheck"
         key: shellcheck
+        soft_fail: true
         plugins:
           - *shellcheck
 
