@@ -5,6 +5,7 @@ This example demonstrates how to deploy the complete Elastic CI Stack for GCP in
 ## Overview
 
 This example creates:
+
 1. VPC network with dual subnets and Cloud NAT (networking module)
 2. Service accounts and IAM roles (IAM module)
 3. Managed instance group with autoscaling Buildkite agents (compute module)
@@ -33,11 +34,13 @@ gcloud services enable logging.googleapis.com
 ## Usage
 
 1. **Copy the example configuration**:
+
    ```bash
    cp terraform.tfvars.example terraform.tfvars
    ```
 
 2. **Edit `terraform.tfvars`** with your values:
+
    ```hcl
    project                = "my-gcp-project-id"
    region                 = "us-central1"
@@ -45,21 +48,25 @@ gcloud services enable logging.googleapis.com
    ```
 
 3. **Initialize Terraform**:
+
    ```bash
    terraform init
    ```
 
 4. **Review the plan**:
+
    ```bash
    terraform plan
    ```
 
 5. **Apply the configuration**:
+
    ```bash
    terraform apply
    ```
 
 6. **Verify the deployment**:
+
    ```bash
    # Check the managed instance group
    gcloud compute instance-groups managed list --filter="name~elastic-ci"
@@ -260,6 +267,7 @@ terraform destroy
 ```
 
 **Warning**: This will delete:
+
 - All running instances
 - The managed instance group
 - The instance template
@@ -270,24 +278,30 @@ terraform destroy
 ## Security Best Practices
 
 1. **Disable SSH access in production**:
+
    ```hcl
    enable_ssh_access = false
    ```
+
    Use IAP for maintenance access instead.
 
 2. **Use Secret Manager for sensitive values**:
+
    ```hcl
    enable_secret_access = true
    ```
+
    Store agent token in Secret Manager instead of terraform.tfvars.
 
 3. **Enable VPC Flow Logs** for audit trails:
+
    ```hcl
    # In networking module
    enable_flow_logs = true
    ```
 
 4. **Restrict SSH source ranges**:
+
    ```hcl
    ssh_source_ranges = ["10.0.0.0/8"]  # Your corporate network
    ```
@@ -297,6 +311,7 @@ terraform destroy
    - Follows principle of least privilege
 
 6. **Enable Shielded VM features**:
+
    ```hcl
    enable_secure_boot          = true
    enable_vtpm                 = true

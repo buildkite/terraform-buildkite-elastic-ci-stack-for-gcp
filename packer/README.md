@@ -7,6 +7,7 @@ This directory contains the Packer configuration and build scripts for creating 
 From this directory (`packer/`):
 
 1. **Build the image**:
+
    ```bash
    ./build --project-id your-gcp-project-id
    ```
@@ -15,7 +16,7 @@ The build script includes built-in validation and will check your environment be
 
 ## Directory Structure
 
-```
+```sh
 packer/
 ├── bootstrap                # Bootstrap script
 ├── build                    # Main build script with validation
@@ -57,16 +58,19 @@ packer/
 ## Examples
 
 ### Basic Build
+
 ```bash
 ./build --project-id my-gcp-project
 ```
 
 ### ARM64 Build
+
 ```bash
 ./build --project-id my-gcp-project --arch arm64 --zone us-central1-a
 ```
 
 ### Custom Configuration
+
 ```bash
 ./build \
   --project-id my-gcp-project \
@@ -79,6 +83,7 @@ packer/
 ### Debug Build Issues
 
 Enable Packer logging:
+
 ```bash
 PACKER_LOG=1 ./build --project-id your-project
 ```
@@ -101,7 +106,7 @@ packer build \
   buildkite-vm-image.pkr.hcl
 ```
 
-**Note**: The build script (`./build`) handles the directory changes automatically, so you can run it from the `packer/` directory.
+**Note**: The build script (`./build`) handles the directory changes automatically, so it can be run from the `packer/` directory.
 
 ## Notes
 
@@ -120,6 +125,7 @@ After building the image:
 3. **Scale deployment**: Use instance templates and managed instance groups
 
 For complete deployment instructions, see:
+
 - `../DEPLOYMENT.md` - Comprehensive deployment guide
 - `../QUICK-REFERENCE.md` - Essential commands
 - `../examples/` - Example scripts and configurations

@@ -1,0 +1,123 @@
+steps:
+  - label: ":terraform: Format Check"
+    key: terraform-fmt
+    plugins:
+      - docker-compose#v5.12.0:
+          config: compose.yml
+          run: terraform
+          command: ["fmt", "-check", "-recursive"]
+
+  - label: ":terraform: Validate Modules"
+    key: terraform-validate-modules
+    plugins:
+      - docker-compose#v5.12.0:
+          config: compose.yml
+          run: terraform
+          command:
+            - sh
+            - -c
+            - |
+              set -euo pipefail
+              echo "🔍 Validating Terraform modules"
+              for dir in modules/*/; do
+                echo "Validating $$dir"
+                cd "$$dir"
+                terraform init -backend=false
+                terraform validate
+                cd - > /dev/null
+              done
+
+  - label: ":terraform: Validate Examples"
+    key: terraform-validate-examples
+    plugins:
+      - docker-compose#v5.12.0:
+          config: compose.yml
+          run: terraform
+          command:
+            - sh
+            - -c
+            - |
+              set -euo pipefail
+              echo "🔍 Validating Terraform examples"
+              for dir in examples/*/; do
+                echo "Validating $$dir"
+                cd "$$dir"
+                terraform init -backend=false
+                terraform validate
+                cd - > /dev/null
+              done
+
+  - label: ":lint-roller: TFLint"
+    key: tflint
+    plugins:
+      - docker-compose#v5.12.0:
+          config: compose.yml
+          run: tflint
+          command: ["--recursive", "--minimum-failure-severity=error"]
+
+  - label: ":shield: TFSec Security Scan"
+    key: tfsec
+    plugins:
+      - docker-compose#v5.12.0:
+          config: compose.yml
+          run: tfsec
+          command: ["."]
+
+  - label: ":packer: Format Check"
+    key: packer-fmt
+    plugins:
+      - docker-compose#v5.12.0:
+          config: compose.yml
+          run: packer
+          command: ["fmt", "-check", "packer/linux/"]
+
+  - label: ":packer: Validate"
+    key: packer-validate
+    plugins:
+      - docker-compose#v5.12.0:
+          config: compose.yml
+          run: packer
+          command:
+            - sh
+            - -c
+            - |
+              set -euo pipefail
+              echo "🔍 Validating Packer template"
+              packer validate -var project_id=test-project packer/linux/buildkite-vm-image.pkr.hcl
+
+  - label: ":bash: ShellCheck"
+    key: shellcheck
+    plugins:
+      - docker-compose#v5.12.0:
+          config: compose.yml
+          run: shellcheck
+          command:
+            - sh
+            - -c
+            - |
+              set -euo pipefail
+              echo "🧹 Linting shell scripts"
+
+              # Check packer scripts
+              echo "Checking packer scripts..."
+              shellcheck packer/linux/scripts/*
+
+              # Check template scripts
+              echo "Checking template scripts..."
+              shellcheck templates/scripts/*
+
+              # Check packer bootstrap and build scripts
+              echo "Checking packer bootstrap and build..."
+              shellcheck packer/bootstrap packer/build
+
+              # Check startup script template (ignore template variables)
+              echo "Checking startup script template..."
+              shellcheck -e SC2154 modules/compute/templates/startup.sh
+
+  - label: ":markdown: Markdown Lint"
+    key: markdownlint
+    plugins:
+      - docker-compose#v5.12.0:
+          config: compose.yml
+          run: markdownlint
+          command: ["**/*.md"]

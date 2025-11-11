@@ -1,0 +1,39 @@
+services:
+  terraform:
+    image: hashicorp/terraform:1.10
+    volumes:
+      - .:/workdir:ro
+    working_dir: /workdir
+
+  packer:
+    image: hashicorp/packer:1.11
+    volumes:
+      - .:/workdir:ro
+    working_dir: /workdir
+
+  tflint:
+    image: ghcr.io/terraform-linters/tflint:v0.59.1
+    volumes:
+      - .:/workdir:ro
+    working_dir: /workdir
+    # TFLint needs to initialize plugins
+    entrypoint: []
+    command: ["sh", "-c", "tflint --init && tflint"]
+
+  tfsec:
+    image: aquasec/tfsec:latest
+    volumes:
+      - .:/workdir:ro
+    working_dir: /workdir
+
+  shellcheck:
+    image: koalaman/shellcheck-alpine:latest
+    volumes:
+      - .:/workdir:ro
+    working_dir: /workdir
+
+  markdownlint:
+    image: davidanson/markdownlint-cli2:latest
+    volumes:
+      - .:/workdir:ro
+    working_dir: /workdir

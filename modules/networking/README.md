@@ -59,21 +59,25 @@ module "networking" {
 ## Outputs
 
 ### Network Information
+
 - `network_name` - Name of the VPC network
 - `network_id` - ID of the VPC network
 - `network_self_link` - Self link of the VPC network
 
 ### Subnet Information
+
 - `subnet_0_name`, `subnet_0_id`, `subnet_0_self_link`, `subnet_0_cidr` - First subnet details
 - `subnet_1_name`, `subnet_1_id`, `subnet_1_self_link`, `subnet_1_cidr` - Second subnet details
 - `subnets` - List of subnet objects for use with instance groups
 
 ### Infrastructure Components
+
 - `router_name` - Name of the Cloud Router
 - `nat_name` - Name of the Cloud NAT
 - `instance_tag` - Network tag for compute instances
 
 ### Firewall Rules
+
 - `ssh_firewall_rule_name` - SSH access rule (if enabled)
 - `internal_firewall_rule_name` - Internal communication rule
 - `health_checks_firewall_rule_name` - Health checks rule
@@ -81,7 +85,7 @@ module "networking" {
 
 ## Network Architecture
 
-```
+```sh
                     ┌─────────────────────────────────────┐
                     │         VPC Network                  │
                     │        (10.0.0.0/16)               │
@@ -122,6 +126,7 @@ The service account or user running Terraform needs the following IAM roles:
 - `roles/compute.securityAdmin`
 
 Or the following specific permissions:
+
 - `compute.networks.create`
 - `compute.networks.delete`
 - `compute.networks.get`
