@@ -6,12 +6,12 @@ definitions:
       entrypoint: "/bin/sh"
   tflint: &tflint
     docker#v5.11.0:
-      image: "ghcr.io/terraform-linters/tflint:latest"
+      image: "ghcr.io/terraform-linters/tflint:0.59.1"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
   tfsec: &tfsec
     docker#v5.11.0:
-      image: "aquasec/tfsec:latest"
+      image: "aquasec/tfsec:1.28"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
   packer: &packer
@@ -21,12 +21,14 @@ definitions:
       entrypoint: "/bin/sh"
   markdownlint: &markdownlint
     docker#v5.11.0:
-      image: "davidanson/markdownlint-cli2:latest"
+      image: "davidanson/markdownlint-cli2:0.18.1"
       workdir: "/workdir"
       command: [".", "--config", ".markdownlint.json"]
   shellcheck: &shellcheck
     shellcheck#v1.4.0:
-      files: "**/*.sh"
+      files:
+        - ".buildkite/scripts/*"
+        - "packer/linux/scripts/*.sh"
 
 steps:
   - group: ":terraform: Root Modules"
