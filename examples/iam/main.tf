@@ -22,11 +22,11 @@ provider "google" {
 module "iam" {
   source = "../../modules/iam"
 
-  project_id                  = var.project
-  agent_service_account_id    = var.agent_service_account_id
-  metrics_service_account_id  = var.metrics_service_account_id
-  agent_custom_role_id        = var.agent_custom_role_id
-  metrics_custom_role_id      = var.metrics_custom_role_id
-  enable_secret_access        = var.enable_secret_access
-  enable_storage_access       = var.enable_storage_access
+  project_id                 = var.project
+  agent_service_account_id   = var.agent_service_account_id
+  metrics_service_account_id = var.metrics_service_account_id
+  agent_custom_role_id       = var.agent_custom_role_id
+  metrics_custom_role_id     = var.metrics_custom_role_id
+  enable_secret_access       = var.enable_secret_access
+  enable_storage_access      = var.enable_storage_access
 }

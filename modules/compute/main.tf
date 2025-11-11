@@ -42,13 +42,13 @@ resource "google_compute_instance_template" "buildkite_agent" {
   }
 
   metadata_startup_script = templatefile("${path.module}/templates/startup.sh", {
-    project_id                     = var.project_id
-    buildkite_agent_token          = var.buildkite_agent_token
-    buildkite_agent_token_secret   = var.buildkite_agent_token_secret
-    buildkite_agent_release        = var.buildkite_agent_release
-    buildkite_queue                = var.buildkite_queue
-    buildkite_agent_tags           = var.buildkite_agent_tags
-    buildkite_api_endpoint         = var.buildkite_api_endpoint
+    project_id                   = var.project_id
+    buildkite_agent_token        = var.buildkite_agent_token
+    buildkite_agent_token_secret = var.buildkite_agent_token_secret
+    buildkite_agent_release      = var.buildkite_agent_release
+    buildkite_queue              = var.buildkite_queue
+    buildkite_agent_tags         = var.buildkite_agent_tags
+    buildkite_api_endpoint       = var.buildkite_api_endpoint
   })
 
   lifecycle {

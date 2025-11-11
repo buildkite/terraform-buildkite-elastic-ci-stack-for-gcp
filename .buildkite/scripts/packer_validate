@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+echo "Running Packer validation..."
+
+packer validate packer/linux/

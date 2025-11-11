@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+echo "Formatting Packer files..."
+packer fmt -recursive -check -diff -write=false packer/linux/buildkite-vm-image.pkr.hcl

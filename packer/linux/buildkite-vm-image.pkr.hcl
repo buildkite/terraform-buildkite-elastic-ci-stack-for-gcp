@@ -97,13 +97,13 @@ source "googlecompute" "buildkite-ci-stack" {
   ] : null
 
   image_labels = {
-    name           = "buildkite-ci-stack-${var.arch}"
-    os_version     = "debian-13"
-    build_number   = var.build_number
-    agent_version  = replace(var.agent_version, ".", "-")
-    is_released    = var.is_released ? "true" : "false"
-    component      = "buildkite-ci-stack"
-    version        = "0-1-0"
+    name          = "buildkite-ci-stack-${var.arch}"
+    os_version    = "debian-13"
+    build_number  = var.build_number
+    agent_version = replace(var.agent_version, ".", "-")
+    is_released   = var.is_released ? "true" : "false"
+    component     = "buildkite-ci-stack"
+    version       = "0-1-0"
   }
 
   tags = ["buildkite", "ci", "packer-build"]
