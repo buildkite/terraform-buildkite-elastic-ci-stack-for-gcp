@@ -74,7 +74,6 @@ steps:
 
       - label: ":packer: Validate"
         key: packer-validate
-        soft_fail: true
         if_changed: "packer/linux/buildkite-vm-image.pkr.hcl"
         command: .buildkite/scripts/validate_packer
         plugins:
@@ -82,7 +81,6 @@ steps:
 
       - label: ":bash: ShellCheck"
         key: shellcheck
-        soft_fail: true
         plugins:
           - *shellcheck
 
