@@ -6,4 +6,4 @@ packer init packer/linux/buildkite-vm-image.pkr.hcl
 
 echo "Running Packer validation..."
 
-packer validate packer/linux/buildkite-vm-image.pkr.hcl
+packer validate --var 'project_id="test-project"' packer/linux/buildkite-vm-image.pkr.hcl
