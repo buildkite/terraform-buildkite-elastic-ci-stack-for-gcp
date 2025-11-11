@@ -6,7 +6,7 @@ definitions:
       entrypoint: "/bin/sh"
   tflint: &tflint
     docker#v5.11.0:
-      image: "terraform-linters/tflint:latest"
+      image: "ghcr.io/terraform-linters/tflint:latest"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
   tfsec: &tfsec
