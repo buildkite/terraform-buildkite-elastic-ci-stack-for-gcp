@@ -244,6 +244,7 @@ We welcome contributions! Please see:
 ## Related Projects
 
 - [Elastic CI Stack for AWS](https://github.com/buildkite/elastic-ci-stack-for-aws) - The original AWS implementation
+- [Terraform Elastic CI Stack for AWS](https://github.com/buildkite/terraform-buildkite-elastic-ci-stack-for-aws) - A terraform implementation of the AWS Elastic Stack
 - [Buildkite Agent](https://github.com/buildkite/agent) - The Buildkite agent source code
 
 ## License
