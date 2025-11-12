@@ -1,0 +1,17 @@
+# Terraform files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Sensitive files
+terraform.tfvars
+*.auto.tfvars
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# macOS
+.DS_Store
