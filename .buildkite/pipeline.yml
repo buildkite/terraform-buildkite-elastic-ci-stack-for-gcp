@@ -11,7 +11,7 @@ definitions:
       entrypoint: "/bin/sh"
   tfsec: &tfsec
     docker#v5.11.0:
-      image: "aquasec/tfsec:1.28"
+      image: "aquasec/tfsec:v1.28"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
   packer: &packer
