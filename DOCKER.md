@@ -31,15 +31,18 @@ The stack includes a sophisticated multi-layered cleanup system to prevent disk 
 **Script**: `/usr/local/bin/docker-gc`
 **Schedule**: Hourly (via `docker-gc.timer`)
 **What it removes**:
+
 - Stopped containers older than 4 hours
 - Unused networks older than 4 hours
 
 **What it preserves**:
+
 - Docker images
 - Build caches
 - Running containers
 
 **Configuration**:
+
 ```bash
 # Set custom prune threshold (default: 4h)
 DOCKER_PRUNE_UNTIL=2h
@@ -50,6 +53,7 @@ DOCKER_PRUNE_UNTIL=2h
 **Script**: `/usr/local/bin/docker-low-disk-gc`
 **Schedule**: Hourly (via `docker-low-disk-gc.timer`)
 **Behavior**:
+
 1. Checks disk space via `/usr/local/bin/bk-check-disk-space.sh`
 2. If disk space is healthy, does nothing
 3. If disk space is low, performs aggressive cleanup:
@@ -61,6 +65,7 @@ DOCKER_PRUNE_UNTIL=2h
 5. If still low, marks instance as unhealthy and terminates itself
 
 **Configuration**:
+
 ```bash
 # Set custom prune threshold for emergency cleanup (default: 1h)
 DOCKER_PRUNE_UNTIL=30m
@@ -77,11 +82,13 @@ DISK_MIN_INODES=500000
 The disk space check script (`/usr/local/bin/bk-check-disk-space.sh`) monitors:
 
 ### Disk Space Threshold
+
 - **Default**: 5GB minimum free space
 - **Location**: Docker data directory (default: `/var/lib/docker`)
 - **Configurable**: Set `DISK_MIN_AVAILABLE` environment variable (in KB)
 
 ### Inode Threshold
+
 - **Default**: 250,000 minimum free inodes
 - **Why**: Docker creates many small files and can exhaust inodes
 - **Configurable**: Set `DISK_MIN_INODES` environment variable
@@ -101,14 +108,17 @@ This ensures that disk space issues on one instance don't block the entire CI pi
 All cleanup services are managed by systemd:
 
 ### Services
+
 - `docker-gc.service`: Regular garbage collection
 - `docker-low-disk-gc.service`: Emergency garbage collection
 
 ### Timers
+
 - `docker-gc.timer`: Triggers regular GC hourly
 - `docker-low-disk-gc.timer`: Triggers emergency GC hourly
 
 ### Status Commands
+
 ```bash
 # Check timer status
 systemctl status docker-gc.timer
@@ -137,6 +147,7 @@ The Docker daemon is configured via `/etc/docker/daemon.json`:
 ```
 
 This configuration can be extended at instance launch time for additional features like:
+
 - User namespace remapping
 - Custom network address pools
 - IPv6 support
