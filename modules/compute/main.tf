@@ -1,9 +1,10 @@
 locals {
-  # Validate that either token or secret is provided
-  token_validation = var.buildkite_agent_token != "" || var.buildkite_agent_token_secret != "" ? true : tobool("Either buildkite_agent_token or buildkite_agent_token_secret must be provided")
+  # Check that at least one authentication method is provided
+  has_auth = var.buildkite_agent_token != "" || var.buildkite_agent_token_secret != ""
 }
 
 resource "google_compute_instance_template" "buildkite_agent" {
+  project      = var.project_id
   name_prefix  = "${var.stack_name}-"
   description  = "Instance template for Buildkite agent instances"
   machine_type = var.machine_type
@@ -53,6 +54,11 @@ resource "google_compute_instance_template" "buildkite_agent" {
 
   lifecycle {
     create_before_destroy = true
+
+    precondition {
+      condition     = var.buildkite_agent_token != "" || var.buildkite_agent_token_secret != ""
+      error_message = "Either buildkite_agent_token or buildkite_agent_token_secret must be provided."
+    }
   }
 
   shielded_instance_config {
@@ -63,6 +69,7 @@ resource "google_compute_instance_template" "buildkite_agent" {
 }
 
 resource "google_compute_region_instance_group_manager" "buildkite_agents" {
+  project            = var.project_id
   name               = "${var.stack_name}-mig"
   base_instance_name = "${var.stack_name}-agent"
   region             = var.region
@@ -98,6 +105,7 @@ resource "google_compute_region_instance_group_manager" "buildkite_agents" {
 resource "google_compute_health_check" "autohealing" {
   count = var.enable_autohealing ? 1 : 0
 
+  project             = var.project_id
   name                = "${var.stack_name}-autohealing"
   check_interval_sec  = var.health_check_interval_sec
   timeout_sec         = var.health_check_timeout_sec
@@ -112,25 +120,28 @@ resource "google_compute_health_check" "autohealing" {
 resource "google_compute_region_autoscaler" "buildkite_agents" {
   count = var.enable_autoscaling ? 1 : 0
 
-  name   = "${var.stack_name}-autoscaler"
-  region = var.region
-  target = google_compute_region_instance_group_manager.buildkite_agents.id
+  project = var.project_id
+  name    = "${var.stack_name}-autoscaler"
+  region  = var.region
+  target  = google_compute_region_instance_group_manager.buildkite_agents.id
 
   autoscaling_policy {
     min_replicas    = var.min_size
     max_replicas    = var.max_size
     cooldown_period = var.cooldown_period
 
+    # Using scheduled jobs as the primary scaling metric
+    # The autoscaler will scale to: ceil(metric_value / target)
+    # If ScheduledJobsCount = 13 and target = 1, we get 13 instances
+    # 
+    # Note: Metrics are published by buildkite-agent-metrics to:
+    # custom.googleapis.com/buildkite/<org-slug>/<MetricName>
+    # The filter matches the Queue label to ensure we're scaling based on the correct queue.
     metric {
-      name   = "custom.googleapis.com/buildkite/scheduled_jobs"
-      type   = "GAUGE"
+      name   = "custom.googleapis.com/buildkite/${var.buildkite_organization_slug}/ScheduledJobsCount"
       target = var.autoscaling_jobs_per_instance
-    }
-
-    metric {
-      name   = "custom.googleapis.com/buildkite/running_jobs"
       type   = "GAUGE"
-      target = var.autoscaling_jobs_per_instance
+      filter = "resource.type = \"global\" AND metric.label.Queue = \"${var.buildkite_queue}\""
     }
 
     mode = "ON"
