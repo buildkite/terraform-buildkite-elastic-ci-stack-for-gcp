@@ -2,6 +2,7 @@
 
 # VPC Network (equivalent to AWS VPC)
 resource "google_compute_network" "vpc" {
+  project                 = var.project_id
   name                    = var.network_name
   auto_create_subnetworks = false
   mtu                     = 1460
@@ -12,6 +13,7 @@ resource "google_compute_network" "vpc" {
 
 # Cloud Router for NAT Gateway
 resource "google_compute_router" "router" {
+  project = var.project_id
   name    = "${var.network_name}-router"
   region  = var.region
   network = google_compute_network.vpc.id
@@ -21,6 +23,7 @@ resource "google_compute_router" "router" {
 
 # Cloud NAT (equivalent to AWS Internet Gateway + NAT Gateway)
 resource "google_compute_router_nat" "nat" {
+  project                            = var.project_id
   name                               = "${var.network_name}-nat"
   router                             = google_compute_router.router.name
   region                             = var.region
@@ -35,6 +38,7 @@ resource "google_compute_router_nat" "nat" {
 
 # Subnet 0 (equivalent to AWS Subnet0 - 10.0.1.0/24)
 resource "google_compute_subnetwork" "subnet_0" {
+  project       = var.project_id
   name          = "${var.network_name}-subnet-0"
   ip_cidr_range = "10.0.1.0/24"
   region        = var.region
@@ -65,6 +69,7 @@ resource "google_compute_subnetwork" "subnet_0" {
 
 # Subnet 1 (equivalent to AWS Subnet1 - 10.0.2.0/24)
 resource "google_compute_subnetwork" "subnet_1" {
+  project       = var.project_id
   name          = "${var.network_name}-subnet-1"
   ip_cidr_range = "10.0.2.0/24"
   region        = var.region
@@ -97,6 +102,7 @@ resource "google_compute_subnetwork" "subnet_1" {
 resource "google_compute_firewall" "ssh_ingress" {
   count = var.enable_ssh_access ? 1 : 0
 
+  project = var.project_id
   name    = "${var.network_name}-allow-ssh"
   network = google_compute_network.vpc.name
 
@@ -113,6 +119,7 @@ resource "google_compute_firewall" "ssh_ingress" {
 
 # Firewall rule for internal communication
 resource "google_compute_firewall" "internal" {
+  project = var.project_id
   name    = "${var.network_name}-allow-internal"
   network = google_compute_network.vpc.name
 
@@ -142,6 +149,7 @@ resource "google_compute_firewall" "internal" {
 
 # Firewall rule for health checks
 resource "google_compute_firewall" "health_checks" {
+  project = var.project_id
   name    = "${var.network_name}-allow-health-checks"
   network = google_compute_network.vpc.name
 
@@ -164,6 +172,7 @@ resource "google_compute_firewall" "health_checks" {
 resource "google_compute_firewall" "iap" {
   count = var.enable_iap_access ? 1 : 0
 
+  project = var.project_id
   name    = "${var.network_name}-allow-iap"
   network = google_compute_network.vpc.name
 
