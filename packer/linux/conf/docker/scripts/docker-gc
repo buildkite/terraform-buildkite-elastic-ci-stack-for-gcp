@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+# Regular garbage collection for Docker
+# This script removes old containers and networks but preserves images and build caches
+# to maintain fast build times.
+
+DOCKER_PRUNE_UNTIL=${DOCKER_PRUNE_UNTIL:-4h}
+
+echo "Running Docker garbage collection (preserving images and build cache)..."
+echo "Pruning resources older than ${DOCKER_PRUNE_UNTIL}"
+
+# Prune networks older than threshold
+echo "Pruning Docker networks..."
+docker network prune --force --filter "until=${DOCKER_PRUNE_UNTIL}"
+
+# Prune containers older than threshold
+echo "Pruning Docker containers..."
+docker container prune --force --filter "until=${DOCKER_PRUNE_UNTIL}"
+
+echo "Docker garbage collection complete!"

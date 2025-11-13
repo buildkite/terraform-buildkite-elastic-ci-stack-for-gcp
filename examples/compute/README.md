@@ -18,6 +18,12 @@ This example creates:
    - Service account key file
    - Workload identity (for CI/CD)
 4. **Buildkite Agent Token**: Get your agent token from Buildkite organization settings
+5. **Custom VM Image** (recommended): Build the Packer image for Docker support:
+   ```bash
+   cd ../../packer
+   ./build --project-id your-gcp-project-id
+   ```
+   See [packer/README.md](../../packer/README.md) for details.
 
 ## Required APIs
 
@@ -94,6 +100,9 @@ zones                 = ["us-central1-a", "us-central1-b", "us-central1-c"]
 buildkite_agent_token = "your-buildkite-agent-token"
 buildkite_queue       = "default"
 buildkite_agent_tags  = "os=linux,environment=production,region=us-central1"
+
+# Use custom image for Docker support
+image                 = "buildkite-ci-stack"
 
 machine_type          = "n1-standard-4"
 root_disk_size_gb     = 100
@@ -251,73 +260,6 @@ gcloud logging read "resource.type=gce_instance AND labels.buildkite-stack=elast
   --limit=50
 ```
 
-## Troubleshooting
-
-### Agents Not Connecting
-
-1. **Check instance startup logs**:
-   ```bash
-   gcloud compute instances get-serial-port-output INSTANCE_NAME --zone=ZONE
-   ```
-
-2. **Verify agent token**:
-   - Ensure `buildkite_agent_token` is correct
-   - Check if token has expired or been revoked
-
-3. **Check network connectivity**:
-   - Verify Cloud NAT is configured correctly
-   - Ensure firewall rules allow egress to `agent.buildkite.com`
-
-### Instances Not Scaling
-
-1. **Check autoscaler status**:
-   ```bash
-   gcloud compute instance-groups managed describe elastic-ci-stack-mig --region=us-central1
-   ```
-
-2. **Verify metrics are being published**:
-   - The autoscaler depends on custom metrics from buildkite-agent-metrics
-   - Without the metrics function, autoscaler will only maintain min_size
-
-3. **Check autoscaler logs**:
-   ```bash
-   gcloud logging read "resource.type=gce_autoscaler" --limit=50
-   ```
-
-### Health Check Failures
-
-1. **Check health check configuration**:
-   ```bash
-   gcloud compute health-checks describe elastic-ci-stack-autohealing
-   ```
-
-2. **Verify SSH service is running on instances**:
-   - The default health check uses port 22 (SSH)
-   - Ensure sshd is enabled and running
-
-3. **Adjust initial delay**:
-   - Increase `health_check_initial_delay_sec` if instances need more startup time
-
-### High Costs
-
-1. **Reduce idle instances**:
-   - Set `min_size = 0` to scale to zero when idle
-   - Use smaller machine types
-
-2. **Use balanced disks**:
-   - Switch from `pd-ssd` to `pd-balanced` or `pd-standard`
-
-3. **Set appropriate max_size**:
-   - Prevent runaway scaling by setting a reasonable `max_size`
-
-4. **Enable cost allocation tags**:
-   ```hcl
-   labels = {
-     cost_center = "engineering"
-     project     = "ci-cd"
-   }
-   ```
-
 ## Cleanup
 
 To destroy all resources:
@@ -333,34 +275,6 @@ terraform destroy
 - The autoscaler
 - The VPC network and subnets
 - Service accounts and IAM roles
-
-## Next Steps
-
-1. **Deploy buildkite-agent-metrics function** (required for autoscaling)
-2. **Configure Cloud Monitoring dashboards** for visibility
-3. **Set up Cloud Logging exports** for long-term log retention
-4. **Configure alerts** for instance group health and scaling events
-5. **Create custom VM image** with pre-installed agent for faster startup
-6. **Implement CI/CD** for Terraform configuration updates
-
-## Cost Estimation
-
-Example monthly costs (us-central1, on-demand pricing):
-
-| Configuration | Avg Instances | Machine Type | Disk | Est. Monthly Cost |
-|---------------|---------------|--------------|------|-------------------|
-| Small (dev) | 2 | n1-standard-2 | 50 GB pd-balanced | ~$100 |
-| Medium (prod) | 5 | n1-standard-4 | 100 GB pd-balanced | ~$400 |
-| Large (enterprise) | 10 | n1-standard-8 | 100 GB pd-ssd | ~$1,500 |
-
-Costs vary based on:
-- Number of running instances
-- Machine type
-- Disk size and type
-- Network egress
-- Region
-
-Use the [GCP Pricing Calculator](https://cloud.google.com/products/calculator) for accurate estimates.
 
 ## Security Best Practices
 
@@ -398,8 +312,21 @@ Use the [GCP Pricing Calculator](https://cloud.google.com/products/calculator) f
    enable_integrity_monitoring = true
    ```
 
+## Docker Support
+
+This example supports Docker out of the box when using the custom Packer image:
+
+- **Docker Engine**: Pre-installed with Compose v2 and Buildx
+- **Multi-Architecture Builds**: Cross-platform builds (ARM/x86)
+- **Automated Cleanup**: Hourly garbage collection to prevent disk issues
+- **Disk Space Protection**: Self-healing when disk space is low
+
+See [DOCKER.md](../../DOCKER.md) for complete Docker features and usage.
+
 ## Additional Resources
 
+- [Docker Support Documentation](../../DOCKER.md)
+- [Packer Build Guide](../../packer/README.md)
 - [Buildkite Agent Documentation](https://buildkite.com/docs/agent/v3)
 - [GCP Compute Engine Documentation](https://cloud.google.com/compute/docs)
 - [GCP Instance Groups](https://cloud.google.com/compute/docs/instance-groups)

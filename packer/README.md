@@ -7,15 +7,30 @@ This directory contains the Packer configuration and build scripts for creating 
 From this directory (`packer/`):
 
 1. **Build the image**:
+
    ```bash
    ./build --project-id your-gcp-project-id
    ```
 
 The build script includes built-in validation and will check your environment before building.
 
+## What's Included
+
+The custom VM image includes:
+
+- **Buildkite Agent**: Pre-installed and configured
+- **Docker Engine**: With Compose v2 (2.38.2) and Buildx (0.26.1)
+- **Multi-Architecture Support**: Cross-platform builds (ARM/x86)
+- **Automated Cleanup**: Hourly Docker garbage collection
+- **Disk Protection**: Self-healing when disk space is low
+- **System Utilities**: Essential tools for CI/CD workloads
+- **GCP Integration**: Cloud Ops Agent for centralized logging
+
+See [DOCKER.md](../DOCKER.md) for complete Docker features.
+
 ## Directory Structure
 
-```
+```sh
 packer/
 ├── bootstrap                # Bootstrap script
 ├── build                    # Main build script with validation
@@ -26,6 +41,8 @@ packer/
     │   ├── install-utils
     │   ├── install-buildkite-agent
     │   ├── install-buildkite-utils
+    │   ├── install-docker
+    │   ├── configure-docker
     │   ├── install-gcp-tools
     │   ├── install-ops-agent        # Google Cloud Ops Agent installation
     │   └── cleanup
@@ -39,6 +56,12 @@ packer/
         │   └── config.yaml          # Ops Agent logging configuration
         └── rsyslog/
             └── buildkite-logging.conf  # Rsyslog configuration for service logs
+        ├── docker/
+        │   ├── daemon.json          # Docker configuration
+        │   ├── scripts/             # GC and disk check scripts
+        │   └── systemd/             # Timer units
+        └── ops-agent/
+            └── config.yaml          # Logging configuration
 ```
 
 ## Prerequisites
@@ -62,16 +85,19 @@ packer/
 ## Examples
 
 ### Basic Build
+
 ```bash
 ./build --project-id my-gcp-project
 ```
 
 ### ARM64 Build
+
 ```bash
 ./build --project-id my-gcp-project --arch arm64 --zone us-central1-a
 ```
 
 ### Custom Configuration
+
 ```bash
 ./build \
   --project-id my-gcp-project \
@@ -84,6 +110,7 @@ packer/
 ### Debug Build Issues
 
 Enable Packer logging:
+
 ```bash
 PACKER_LOG=1 ./build --project-id your-project
 ```
@@ -149,6 +176,7 @@ After building the image:
 3. **Scale deployment**: Use instance templates and managed instance groups
 
 For complete deployment instructions, see:
+
 - `../DEPLOYMENT.md` - Comprehensive deployment guide
 - `../QUICK-REFERENCE.md` - Essential commands
 - `../examples/` - Example scripts and configurations

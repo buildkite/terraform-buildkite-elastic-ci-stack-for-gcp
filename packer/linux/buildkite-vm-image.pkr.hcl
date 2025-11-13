@@ -145,6 +145,16 @@ build {
     script = "scripts/install-buildkite-utils"
   }
 
+  # Docker installation
+  provisioner "shell" {
+    script = "scripts/install-docker"
+  }
+
+  # Docker configuration (daemon.json, GC scripts, systemd timers)
+  provisioner "shell" {
+    script = "scripts/configure-docker"
+  }
+
   # Session Manager-like functionality for GCP
   provisioner "shell" {
     script = "scripts/install-gcp-tools"

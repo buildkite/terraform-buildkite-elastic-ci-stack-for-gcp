@@ -1,0 +1,26 @@
+# Example configuration for Buildkite Agent Metrics Cloud Function
+# Copy this file to terraform.tfvars and update with your values
+
+project_id = "your-gcp-project-id"
+
+# Option 1: Direct token (for testing/development)
+buildkite_agent_token = "your-buildkite-agent-token"
+
+# Option 2: Using Google Secret Manager (for production)
+# First create the secret: echo -n "your-token" | gcloud secrets create buildkite-token --data-file=-
+# Then use:
+# buildkite_agent_token_secret = "buildkite-token"
+
+# Optional: Change region if needed
+# region = "us-central1"
+
+# Optional: Monitor specific queues (comma-separated)
+# buildkite_queue = "backend,frontend,deploy"
+
+# Optional: Change schedule interval
+# Default is every minute: "* * * * *"
+# Every 5 minutes: "*/5 * * * *"
+# schedule_interval = "*/5 * * * *"
+
+# Optional: Enable debug logging
+# enable_debug = true

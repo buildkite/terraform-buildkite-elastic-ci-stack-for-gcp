@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
@@ -19,7 +19,15 @@ echo "Installing Buildkite agent..."
 apt-get install -y buildkite-agent
 
 echo "Configuring Buildkite agent..."
+%{ if buildkite_agent_token_secret != "" ~}
+# Fetch token from Secret Manager
+echo "Fetching Buildkite agent token from Secret Manager..."
+AGENT_TOKEN=$(gcloud secrets versions access latest --secret="${buildkite_agent_token_secret}" --project="${project_id}")
+sed -i "s/xxx/$AGENT_TOKEN/g" /etc/buildkite-agent/buildkite-agent.cfg
+%{ else ~}
+# Use token from variable
 sed -i "s/xxx/${buildkite_agent_token}/g" /etc/buildkite-agent/buildkite-agent.cfg
+%{ endif ~}
 sed -i "s/# queue=.*/queue=\"${buildkite_queue}\"/g" /etc/buildkite-agent/buildkite-agent.cfg
 sed -i "s~# endpoint=.*~endpoint=\"${buildkite_api_endpoint}\"~g" /etc/buildkite-agent/buildkite-agent.cfg
 
