@@ -1,0 +1,100 @@
+definitions:
+  terraform_docker: &terraform_docker
+    docker#v5.11.0:
+      image: "hashicorp/terraform:1.13"
+      workdir: "/workdir"
+      entrypoint: "/bin/sh"
+  tflint: &tflint
+    docker#v5.11.0:
+      image: "ghcr.io/terraform-linters/tflint:v0.59.1"
+      workdir: "/workdir"
+      entrypoint: "/bin/sh"
+  tfsec: &tfsec
+    docker#v5.11.0:
+      image: "aquasec/tfsec:1.28"
+      workdir: "/workdir"
+      entrypoint: "/bin/sh"
+  packer: &packer
+    docker#v5.11.0:
+      image: "hashicorp/packer:1.11"
+      workdir: "/workdir"
+      entrypoint: "/bin/sh"
+  markdownlint: &markdownlint
+    docker#v5.11.0:
+      image: "davidanson/markdownlint-cli2:v0.18.1"
+      workdir: "/workdir"
+      command: [".", "--config", ".markdownlint.json"]
+  shellcheck: &shellcheck
+    shellcheck#v1.4.0:
+      files:
+        - ".buildkite/scripts/*"
+        - "packer/linux/scripts/*.sh"
+
+steps:
+  - group: ":terraform: Root Modules"
+    steps:
+      - label: ":terraform: Format Check"
+        key: terraform-fmt
+        if_changed: "*.tf"
+        command: .buildkite/scripts/format_check
+        plugins:
+          - *terraform_docker
+
+      - label: ":terraform: Validate Modules"
+        key: terraform-validate-modules
+        if_changed:
+          - "*.tf"
+          - "*.tfvars"
+        command: .buildkite/scripts/validate
+        plugins:
+          - *terraform_docker
+
+      - label: ":lint-roller: TFLint"
+        key: tflint
+        if_changed: "*.tf"
+        command: .buildkite/scripts/tflint
+        plugins:
+          - *tflint
+
+      - label: ":shield: TFSec Security Scan"
+        key: tfsec
+        if_changed: "*.tf"
+        command: .buildkite/scripts/tfsec
+        plugins:
+          - *tfsec
+
+  - group: ":packer: Packer Checks"
+    steps:
+      - label: ":packer: Format Check"
+        key: packer-fmt
+        if_changed: "packer/linux/buildkite-vm-image.pkr.hcl"
+        command: .buildkite/scripts/format_packer
+        plugins:
+          - *packer
+
+      - label: ":packer: Validate"
+        key: packer-validate
+        if_changed: "packer/linux/buildkite-vm-image.pkr.hcl"
+        command: .buildkite/scripts/validate_packer
+        plugins:
+          - *packer
+
+      - label: ":bash: ShellCheck"
+        key: shellcheck
+        plugins:
+          - *shellcheck
+
+  - group: "📖 Docs and Examples"
+    steps:
+      - label: ":terraform: Validate Examples"
+        key: terraform-validate-examples
+        if_changed: "examples/*"
+        command: .buildkite/scripts/validate_examples
+        plugins:
+          - *terraform_docker
+
+      - label: ":markdown: Markdown Lint"
+        key: markdownlint
+        if_changed: "*.md"
+        plugins:
+          - *markdownlint

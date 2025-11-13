@@ -103,7 +103,9 @@ When you open the PR, explain what changed and why. Link any related issues and 
 
 ### Code Style
 
-Stick to 2 spaces for indentation and follow the [Terraform Style Guide](https://www.terraform.io/docs/language/syntax/style.html). Run `terraform fmt -recursive` before you commit. Try to keep lines under 120 characters, and add comments when you're doing something non-obvious.
+Stick to 2 spaces for indentation and follow the [Terraform Style Guide](https://www.terraform.io/docs/language/syntax/style.html). Run `terraform fmt -recursive` before you commit.
+
+Try to keep lines under 120 characters, and add comments when you're doing something non-obvious.
 
 For shell scripts, follow the [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html) and ensure they pass shellcheck.
 
@@ -122,7 +124,7 @@ terraform-docs markdown table . --output-file README.md
 
 ## Project Structure
 
-```
+```sh
 .
 ├── *.tf                    # Root module Terraform files
 ├── modules/                # Sub-modules
