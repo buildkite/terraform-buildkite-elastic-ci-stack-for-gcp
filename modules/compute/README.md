@@ -63,6 +63,7 @@ module "compute" {
 ## Dependencies
 
 This module requires:
+
 1. **Networking Module** - Must be deployed first to provide VPC network and subnets
 2. **IAM Module** - Must be deployed first to provide service account for instances
 
@@ -125,7 +126,9 @@ This module requires:
 ## Architecture
 
 ### Instance Template
+
 The instance template defines the configuration for each Buildkite agent VM:
+
 - **Machine Type**: Configurable (default: `n1-standard-2`)
 - **Boot Disk**: Debian 12 image with configurable size and type
 - **Network**: No external IP (uses Cloud NAT from networking module)
@@ -134,21 +137,27 @@ The instance template defines the configuration for each Buildkite agent VM:
 - **Tags**: Applied for firewall rule targeting
 
 ### Managed Instance Group
+
 The regional managed instance group:
+
 - **Regional Deployment**: Distributes instances across multiple zones for HA
 - **Update Policy**: Proactive updates with configurable surge/unavailable
 - **Autohealing**: Optional health check-based autohealing
 - **Target Size**: Managed by autoscaler (ignored by Terraform lifecycle)
 
 ### Autoscaler
+
 The autoscaler automatically adjusts the number of instances based on:
+
 - **Scheduled Jobs**: Custom metric from buildkite-agent-metrics
 - **Running Jobs**: Custom metric from buildkite-agent-metrics
 - **Min/Max Size**: Configurable boundaries
 - **Cooldown Period**: Prevents thrashing (default: 60 seconds)
 
 ### Health Checks
+
 Optional autohealing using TCP health checks:
+
 - **Port**: Configurable (default: SSH port 22)
 - **Interval**: How often to check (default: 30 seconds)
 - **Timeout**: Time to wait for response (default: 10 seconds)
@@ -218,18 +227,22 @@ The startup script will install the Buildkite agent at boot time:
 ## Security
 
 ### Shielded VM
+
 Shielded VM features provide verifiable integrity:
+
 - **Secure Boot**: Prevents boot-level malware (optional, default: disabled)
 - **vTPM**: Virtual Trusted Platform Module (default: enabled)
 - **Integrity Monitoring**: Detects rootkits (default: enabled)
 
 ### Network Security
+
 - Instances have no external IP addresses
 - All internet access goes through Cloud NAT
 - Firewall rules control all traffic
 - Instance tag targets specific firewall rules
 
 ### IAM Security
+
 - Minimal permissions via custom service account
 - No default compute service account
 - Follows principle of least privilege

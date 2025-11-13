@@ -16,11 +16,13 @@ This example demonstrates how to use the networking module to create GCP network
 ## Usage
 
 1. **Copy the example terraform.tfvars file:**
+
    ```bash
    cp terraform.tfvars.example terraform.tfvars
    ```
 
 2. **Edit terraform.tfvars with your values:**
+
    ```hcl
    project = "your-gcp-project-id"
    region  = "us-central1"
@@ -28,16 +30,19 @@ This example demonstrates how to use the networking module to create GCP network
    ```
 
 3. **Initialize Terraform:**
+
    ```bash
    terraform init
    ```
 
 4. **Plan the deployment:**
+
    ```bash
    terraform plan
    ```
 
 5. **Apply the configuration:**
+
    ```bash
    terraform apply
    ```
@@ -61,6 +66,7 @@ This example creates the networking foundation for your Buildkite agent infrastr
 ## Outputs
 
 After deployment, you'll see outputs including:
+
 - Network name and self-link for use with instance groups
 - Subnet information for compute instances
 - Network tag for instances
@@ -78,36 +84,43 @@ You can customize the deployment by modifying variables in `terraform.tfvars`:
 After deployment, you can verify the networking infrastructure using these `gcloud` commands:
 
 **List the VPC network:**
+
 ```bash
 gcloud compute networks list --filter="name:elastic-ci-stack-example"
 ```
 
 **List subnets:**
+
 ```bash
 gcloud compute networks subnets list --filter="network:elastic-ci-stack-example"
 ```
 
 **Check Cloud Router:**
+
 ```bash
 gcloud compute routers list --filter="name:elastic-ci-stack-example-router"
 ```
 
 **Verify Cloud NAT:**
+
 ```bash
 gcloud compute routers nats list --router=elastic-ci-stack-example-router --region=us-central1
 ```
 
 **List firewall rules:**
+
 ```bash
 gcloud compute firewall-rules list --filter="network:elastic-ci-stack-example"
 ```
 
 **Get detailed network info:**
+
 ```bash
 gcloud compute networks describe elastic-ci-stack-example
 ```
 
 **View subnet details:**
+
 ```bash
 gcloud compute networks subnets describe elastic-ci-stack-example-subnet-0 --region=us-central1
 gcloud compute networks subnets describe elastic-ci-stack-example-subnet-1 --region=us-central1
@@ -116,7 +129,7 @@ gcloud compute networks subnets describe elastic-ci-stack-example-subnet-1 --reg
 ## Clean Up
 
 To destroy the infrastructure:
+
 ```bash
 terraform destroy
 ```
-
