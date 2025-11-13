@@ -103,6 +103,8 @@ module "buildkite_metrics" {
 | `service_account_email` | Email of the service account to run the Cloud Function. If not provided, a new one will be created | `string` | `""` | no |
 | `enable_debug` | Enable debug logging for the Cloud Function | `bool` | `false` | no |
 | `labels` | Labels to apply to the Cloud Function and related resources | `map(string)` | `{managed_by = "terraform", purpose = "buildkite-metrics"}` | no |
+| `function_source_bucket` | GCS bucket containing the pre-built Cloud Function zip file | `string` | `"buildkite-cloud-functions"` | no |
+| `function_source_object` | Path to the Cloud Function zip file in the GCS bucket | `string` | `"buildkite-agent-metrics/cloud-function-latest.zip"` | no |
 
 **Note**: You must provide exactly one of `buildkite_agent_token` or `buildkite_agent_token_secret`.
 

@@ -34,16 +34,17 @@ resource "google_service_account" "metrics_function" {
   project      = var.project_id
 }
 
-# Grant necessary permissions to the service account
+# Grant necessary permissions to the service account (only if we created it)
 resource "google_project_iam_member" "metrics_writer" {
+  count   = local.create_service_account ? 1 : 0
   project = var.project_id
   role    = "roles/monitoring.metricWriter"
   member  = "serviceAccount:${local.service_account_email}"
 }
 
-# Grant Secret Manager access if using secret
+# Grant Secret Manager access if using secret (only if we created the SA)
 resource "google_project_iam_member" "secret_accessor" {
-  count   = local.use_secret_manager ? 1 : 0
+  count   = local.create_service_account && local.use_secret_manager ? 1 : 0
   project = var.project_id
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${local.service_account_email}"
@@ -57,13 +58,14 @@ resource "google_cloudfunctions2_function" "metrics_function" {
   description = "Collects Buildkite agent metrics and sends them to Cloud Monitoring"
 
   build_config {
-    runtime     = "go124"
-    entry_point = "buildkite-agent-metrics"
+    runtime         = "go124"
+    entry_point     = "buildkite-agent-metrics"
+    service_account = "projects/${var.project_id}/serviceAccounts/${local.service_account_email}"
     
     source {
       storage_source {
-        bucket = "buildkite-cloud-functions"
-        object = "buildkite-agent-metrics/cloud-function-latest.zip"
+        bucket = var.function_source_bucket
+        object = var.function_source_object
       }
     }
   }
@@ -98,11 +100,6 @@ resource "google_cloudfunctions2_function" "metrics_function" {
   }
 
   labels = var.labels
-
-  depends_on = [
-    google_project_iam_member.metrics_writer,
-    google_project_iam_member.secret_accessor
-  ]
 }
 
 # Grant the service account permission to invoke the function
