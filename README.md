@@ -54,6 +54,7 @@ terraform apply
 ```
 
 The module will create:
+
 - VPC network with Cloud NAT
 - IAM service accounts with appropriate permissions
 - Managed instance group with Buildkite agents
