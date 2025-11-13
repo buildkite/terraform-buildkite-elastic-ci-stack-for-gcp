@@ -12,3 +12,6 @@
 function.zip
 function-src/
 cleanup.sh
+
+## Packer build files
+build/
