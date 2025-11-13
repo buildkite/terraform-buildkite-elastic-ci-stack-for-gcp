@@ -167,16 +167,3 @@ For detailed information about logging, see [LOGGING.md](../LOGGING.md).
 - Build artifacts are minimal - the installation scripts handle missing files gracefully
 - Ops Agent is stopped during image build and starts automatically on instance boot
 
-## Next Steps
-
-After building the image:
-
-1. **Deploy VMs**: Use the deployment guide in `../DEPLOYMENT.md`
-2. **Test the image**: Create a test instance and verify agent functionality
-3. **Scale deployment**: Use instance templates and managed instance groups
-
-For complete deployment instructions, see:
-
-- `../DEPLOYMENT.md` - Comprehensive deployment guide
-- `../QUICK-REFERENCE.md` - Essential commands
-- `../examples/` - Example scripts and configurations
