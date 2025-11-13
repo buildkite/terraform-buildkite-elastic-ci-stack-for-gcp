@@ -51,7 +51,7 @@ module "buildkite_metrics" {
 
   project_id                        = "my-gcp-project"
   region                           = "us-central1"
-  buildkite_agent_token_secret_name = "buildkite-agent-token"
+  buildkite_agent_token_secret = "buildkite-agent-token"
 }
 ```
 
@@ -63,7 +63,7 @@ module "buildkite_metrics" {
 
   project_id                        = "my-gcp-project"
   region                           = "us-central1"
-  buildkite_agent_token_secret_name = "buildkite-agent-token"
+  buildkite_agent_token_secret = "buildkite-agent-token"
   
   # Monitor specific queues
   buildkite_queue = "backend,frontend,deploy"
@@ -95,8 +95,8 @@ module "buildkite_metrics" {
 |------|-------------|------|---------|----------|
 | `project_id` | GCP project ID where the Cloud Function will be deployed | `string` | n/a | yes |
 | `region` | GCP region where the Cloud Function will be deployed | `string` | `"us-central1"` | no |
-| `buildkite_agent_token` | Buildkite agent token for metrics collection (use `buildkite_agent_token_secret_name` for production) | `string` | `""` | no |
-| `buildkite_agent_token_secret_name` | Name of the Google Secret Manager secret containing the Buildkite agent token | `string` | `""` | no |
+| `buildkite_agent_token` | Buildkite agent token for metrics collection (use `buildkite_agent_token_secret` for production) | `string` | `""` | no |
+| `buildkite_agent_token_secret` | Name of the Google Secret Manager secret containing the Buildkite agent token | `string` | `""` | no |
 | `buildkite_queue` | Comma-separated list of Buildkite queues to monitor. If empty, monitors all queues | `string` | `""` | no |
 | `function_name` | Name of the Cloud Function | `string` | `"buildkite-agent-metrics"` | no |
 | `schedule_interval` | Cloud Scheduler cron expression for triggering the function | `string` | `"* * * * *"` | no |
@@ -104,7 +104,7 @@ module "buildkite_metrics" {
 | `enable_debug` | Enable debug logging for the Cloud Function | `bool` | `false` | no |
 | `labels` | Labels to apply to the Cloud Function and related resources | `map(string)` | `{managed_by = "terraform", purpose = "buildkite-metrics"}` | no |
 
-**Note**: You must provide exactly one of `buildkite_agent_token` or `buildkite_agent_token_secret_name`.
+**Note**: You must provide exactly one of `buildkite_agent_token` or `buildkite_agent_token_secret`.
 
 ## Outputs
 
@@ -160,6 +160,6 @@ gcloud functions logs read buildkite-agent-metrics \
 
 ## Security Considerations
 
-- **Token Storage**: Use Secret Manager (`buildkite_agent_token_secret_name`) for production deployments rather than passing tokens directly
+- **Token Storage**: Use Secret Manager (`buildkite_agent_token_secret`) for production deployments rather than passing tokens directly
 - **Service Account**: The module creates a dedicated service account with minimal permissions by default
 - **Network Access**: The function requires outbound internet access to reach the Buildkite API

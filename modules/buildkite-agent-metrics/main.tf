@@ -9,7 +9,7 @@ locals {
   service_account_id = "${var.function_name}-sa"
   
   # Determine token configuration method
-  use_secret_manager = var.buildkite_agent_token_secret_name != ""
+  use_secret_manager = var.buildkite_agent_token_secret != ""
   use_env_token     = var.buildkite_agent_token != ""
   
   # Scheduler job name
@@ -21,7 +21,7 @@ resource "null_resource" "token_validation" {
   count = (local.use_secret_manager && local.use_env_token) || (!local.use_secret_manager && !local.use_env_token) ? 1 : 0
   
   provisioner "local-exec" {
-    command = "echo 'ERROR: Exactly one of buildkite_agent_token or buildkite_agent_token_secret_name must be provided' && exit 1"
+    command = "echo 'ERROR: Exactly one of buildkite_agent_token or buildkite_agent_token_secret must be provided' && exit 1"
   }
 }
 
@@ -83,7 +83,7 @@ resource "google_cloudfunctions2_function" "metrics_function" {
         BUILDKITE_AGENT_TOKENS = var.buildkite_agent_token
       } : {},
       local.use_secret_manager ? {
-        BUILDKITE_AGENT_TOKEN_SECRET_NAMES = "projects/${var.project_id}/secrets/${var.buildkite_agent_token_secret_name}/versions/latest"
+        BUILDKITE_AGENT_TOKEN_SECRET_NAMES = "projects/${var.project_id}/secrets/${var.buildkite_agent_token_secret}/versions/latest"
       } : {},
       var.buildkite_queue != "" ? {
         BUILDKITE_QUEUE = var.buildkite_queue

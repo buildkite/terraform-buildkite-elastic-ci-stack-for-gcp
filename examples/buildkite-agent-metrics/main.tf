@@ -17,9 +17,12 @@ provider "google" {
 module "buildkite_metrics" {
   source = "../../modules/buildkite-agent-metrics"
 
-  project_id            = var.project_id
-  region               = var.region
-  buildkite_agent_token = var.buildkite_agent_token
+  project_id = var.project_id
+  region     = var.region
+
+  # Use either direct token or secret (only one should be provided)
+  buildkite_agent_token        = var.buildkite_agent_token
+  buildkite_agent_token_secret = var.buildkite_agent_token_secret
   
   # Optional: Monitor specific queues
   buildkite_queue = var.buildkite_queue

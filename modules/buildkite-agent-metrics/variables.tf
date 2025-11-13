@@ -19,13 +19,13 @@ variable "region" {
 }
 
 variable "buildkite_agent_token" {
-  description = "Buildkite agent token for metrics collection. Use buildkite_agent_token_secret_name for production deployments."
+  description = "Buildkite agent token for metrics collection. Use buildkite_agent_token_secret for production deployments."
   type        = string
   default     = ""
   sensitive   = true
 }
 
-variable "buildkite_agent_token_secret_name" {
+variable "buildkite_agent_token_secret" {
   description = "Name of the Google Secret Manager secret containing the Buildkite agent token (recommended for production)"
   type        = string
   default     = ""
