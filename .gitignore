@@ -7,14 +7,6 @@
 ## Terraform variable files (contain secrets)
 **/*.tfvars
 !**/*.tfvars.example
-<<<<<<< Updated upstream
-||||||| Stash base
-
-## Test/downloaded files
-function.zip
-function-src/
-cleanup.sh
-=======
 
 ## Test/downloaded files
 function.zip
@@ -23,4 +15,3 @@ cleanup.sh
 
 ## Packer build files
 build/
->>>>>>> Stashed changes
