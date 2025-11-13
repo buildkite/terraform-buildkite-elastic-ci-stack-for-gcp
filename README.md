@@ -30,8 +30,9 @@ module "buildkite_stack" {
   source = "github.com/buildkite/elastic-ci-stack-for-gcp"
 
   # Required
-  project_id            = "your-gcp-project"
-  buildkite_agent_token = "YOUR_AGENT_TOKEN"  # Get from Buildkite UI
+  project_id                  = "your-gcp-project"
+  buildkite_organization_slug = "your-org-slug"
+  buildkite_agent_token       = "YOUR_AGENT_TOKEN"
 
   # Stack configuration
   stack_name       = "my-buildkite-stack"
@@ -60,7 +61,30 @@ That's it! The module will automatically create:
 - A VPC network with Cloud NAT
 - IAM service accounts with appropriate permissions
 - A managed instance group with Buildkite agents
-- Health checks and autoscaling (when enabled)
+- A Cloud Function that publishes Buildkite metrics (for autoscaling)
+- Health checks and autoscaling based on queue depth
+
+### Autoscaling
+
+By default, the stack will autoscale based on your Buildkite queue depth:
+
+- **Scale up**: When jobs are queued, new instances spin up (typically 2-5 minutes)
+- **Scale down**: When idle, instances terminate (typically 10-15 minutes after jobs complete)
+- **Scale to zero**: With `min_size = 0`, you pay nothing when idle
+- **Metrics**: A Cloud Function publishes queue metrics every minute to Cloud Monitoring
+
+The autoscaler targets `autoscaling_jobs_per_instance` (default: 1 job per instance). To run multiple jobs per instance:
+
+```hcl
+autoscaling_jobs_per_instance = 2  # Each instance handles 2 concurrent jobs
+```
+
+To disable autoscaling and use a fixed instance count:
+
+```hcl
+enable_autoscaling = false
+min_size          = 3  # Always run 3 instances
+```
 
 ### Advanced Usage
 
@@ -103,7 +127,7 @@ module "buildkite_compute" {
 
 ## Architecture
 
-The stack is organized into three main modules:
+The stack is organized into four main modules:
 
 ### 1. Networking Module (`modules/networking/`)
 
@@ -144,6 +168,17 @@ Deploys and manages the Buildkite agents:
 
 **[View Compute Module Documentation →](modules/compute/README.md)**
 
+### 4. Buildkite Agent Metrics Module (`modules/buildkite-agent-metrics/`)
+
+Provides autoscaling metrics via Cloud Function:
+
+- Cloud Function that collects Buildkite queue metrics
+- Publishes custom metrics to Cloud Monitoring for autoscaling
+- Supports multiple queues and organizations
+- Configurable polling intervals and Secret Manager integration
+
+**[View Buildkite Agent Metrics Module Documentation →](modules/buildkite-agent-metrics/README.md)**
+
 ## Custom VM Images
 
 The stack includes Packer templates for building custom VM images with:
@@ -164,13 +199,6 @@ See the [`examples/`](examples/) directory for complete working examples:
 - **[Networking Example](examples/networking/)** - Standalone VPC setup
 - **[IAM Example](examples/iam/)** - Service account configuration
 - **[Compute Example](examples/compute/)** - Full agent deployment
-
-## Autoscaling
-
-By default, autoscaling is **disabled** to prevent errors before the metrics function is deployed. To enable autoscaling:
-
-1. Deploy the `buildkite-agent-metrics` Cloud Function (coming soon)
-2. Set `enable_autoscaling = true` in your compute module configuration
 
 **[Learn more about autoscaling →](examples/compute/AUTOSCALING.md)**
 
