@@ -29,6 +29,14 @@ variable "buildkite_agent_token_secret" {
   description = "Name of the Google Secret Manager secret containing the Buildkite agent token (recommended for production)"
   type        = string
   default     = ""
+
+  validation {
+    condition = (
+      var.buildkite_agent_token_secret == "" ||
+      can(regex("^[a-zA-Z0-9_-]+$", var.buildkite_agent_token_secret))
+    )
+    error_message = "Secret name must contain only uppercase and lowercase letters, numerals, hyphens, and underscores."
+  }
 }
 
 variable "buildkite_queue" {

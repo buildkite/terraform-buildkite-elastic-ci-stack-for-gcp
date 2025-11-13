@@ -23,6 +23,7 @@ This module creates two service accounts with associated IAM roles:
 **Service Account**: `elastic-ci-agent@{project}.iam.gserviceaccount.com`
 
 **IAM Roles Bound**:
+
 - `roles/compute.viewer` - View compute resources and describe instances
 - `roles/monitoring.metricWriter` - Write custom metrics to Cloud Monitoring
 - `roles/logging.logWriter` - Write logs to Cloud Logging
@@ -35,6 +36,7 @@ This module creates two service accounts with associated IAM roles:
 **Service Account**: `elastic-ci-metrics@{project}.iam.gserviceaccount.com`
 
 **IAM Roles Bound**:
+
 - `roles/monitoring.metricWriter` - Publish custom metrics
 - `roles/compute.viewer` - Read instance group information
 - `roles/logging.logWriter` - Write function logs
@@ -118,6 +120,7 @@ resource "google_cloudfunctions2_function" "metrics" {
 ### Agent Instance Management Role
 
 Allows agents to manage their own instances within managed instance groups:
+
 - `compute.instanceGroupManagers.get`
 - `compute.instances.get`
 - `compute.instances.delete`
@@ -125,12 +128,14 @@ Allows agents to manage their own instances within managed instance groups:
 - `compute.regionOperations.get`
 
 This is equivalent to the AWS permissions:
+
 - `autoscaling:SetInstanceHealth`
 - `autoscaling:TerminateInstanceInAutoScalingGroup`
 
 ### Metrics Autoscaler Role
 
 Allows the metrics function to scale instance groups based on queue depth:
+
 - `compute.instanceGroupManagers.get/update`
 - `compute.instanceGroups.get/list`
 - `compute.autoscalers.get/update`

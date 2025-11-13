@@ -243,7 +243,8 @@ Access logs via Cloud Console or `gcloud logging read`.
 ## Module Compatibility
 
 | Module | Terraform Version | GCP Provider Version |
-|--------|------------------|---------------------|
+|--------|-------------------|----------------------|
+
 | networking | >= 1.0 | >= 4.0 |
 | iam | >= 1.0 | >= 4.0 |
 | compute | >= 1.0 | >= 4.0 |
