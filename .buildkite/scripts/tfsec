@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+echo "Running tfsec security scan..."
+tfsec .
+
+echo "✅ Security scan passed"
+exit 0

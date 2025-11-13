@@ -133,7 +133,7 @@ packer build \
   buildkite-vm-image.pkr.hcl
 ```
 
-**Note**: The build script (`./build`) handles the directory changes automatically, so you can run it from the `packer/` directory.
+**Note**: The build script (`./build`) handles the directory changes automatically, so it can be run from the `packer/` directory.
 
 ## What's Included in the Image
 

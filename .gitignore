@@ -7,3 +7,11 @@
 ## Terraform variable files (contain secrets)
 **/*.tfvars
 !**/*.tfvars.example
+
+## Test/downloaded files
+function.zip
+function-src/
+cleanup.sh
+
+## Packer build files
+build/

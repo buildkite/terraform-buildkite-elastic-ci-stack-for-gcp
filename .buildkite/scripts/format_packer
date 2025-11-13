@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Checking Packer file formatting..."
+packer fmt -check -diff packer/linux/
+
+echo "✅ Packer formatting check passed!"

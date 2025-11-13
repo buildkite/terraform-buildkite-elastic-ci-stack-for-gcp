@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Changing to packer/linux directory..."
+cd packer/linux
+
+echo "Initializing Packer config..."
+packer init buildkite-vm-image.pkr.hcl
+
+echo "Running Packer validation..."
+packer validate -var 'project_id=test-project' buildkite-vm-image.pkr.hcl
+
+echo "✅ Packer validation passed!"

@@ -1,4 +1,4 @@
-# Enabling Autoscaling
+# Autoscaling
 
 The Elastic CI Stack for GCP compute module is currently running **without autoscaling**. The managed instance group will maintain a fixed size based on manual configuration.
 
@@ -6,7 +6,7 @@ The Elastic CI Stack for GCP compute module is currently running **without autos
 
 Autoscaling requires custom Cloud Monitoring metrics that are published by the **buildkite-agent-metrics** Cloud Function. Without these metrics, the autoscaler will show errors like:
 
-```
+```sh
 The monitoring metric that was specified does not exist or does not have the required labels.
 ```
 
@@ -94,7 +94,7 @@ When enabled, the autoscaler will:
 
 ### Scaling Formula
 
-```
+```sh
 desired_instances = max(
   scheduled_jobs / jobs_per_instance,
   running_jobs / jobs_per_instance

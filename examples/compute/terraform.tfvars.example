@@ -1,0 +1,52 @@
+# GCP Configuration
+project = "my-gcp-project-id"
+region  = "us-central1"
+zones   = ["us-central1-a", "us-central1-b", "us-central1-c"]
+
+# Stack Configuration
+stack_name = "elastic-ci-stack"
+
+# Networking (from networking module - update with your values)
+network_self_link = "https://www.googleapis.com/compute/v1/projects/my-project/global/networks/elastic-ci-stack"
+subnet_self_link  = "https://www.googleapis.com/compute/v1/projects/my-project/regions/us-central1/subnetworks/elastic-ci-stack-subnet-0"
+instance_tag      = "elastic-ci-agent"
+
+# IAM (from IAM module - update with your value)
+agent_service_account_email = "elastic-ci-agent@my-project.iam.gserviceaccount.com"
+
+# Instance Configuration
+machine_type      = "n1-standard-2"
+image             = "debian-cloud/debian-12"
+root_disk_size_gb = 50
+root_disk_type    = "pd-balanced"
+
+# Buildkite Configuration
+# Option 1: Use Secret Manager (recommended)
+buildkite_agent_token        = ""
+buildkite_agent_token_secret = "buildkite-agent-token"
+
+# Option 2: Use direct token (less secure)
+# buildkite_agent_token        = "your-token-here"
+# buildkite_agent_token_secret = ""
+
+buildkite_agent_release = "stable"
+buildkite_queue         = "default"
+buildkite_agent_tags    = "os=linux,environment=production"
+buildkite_api_endpoint  = "https://agent.buildkite.com/v3"
+
+# Autoscaling Configuration
+min_size                      = 0
+max_size                      = 10
+cooldown_period               = 60
+autoscaling_jobs_per_instance = 1
+enable_autoscaling            = false  # Set to true after deploying buildkite-agent-metrics
+
+# Health Check Configuration
+enable_autohealing             = true
+health_check_initial_delay_sec = 300
+
+# Labels
+labels = {
+  managed_by = "terraform"
+  team       = "platform"
+}
