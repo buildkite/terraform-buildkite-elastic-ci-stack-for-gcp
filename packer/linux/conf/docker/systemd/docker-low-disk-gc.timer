@@ -1,0 +1,11 @@
+[Unit]
+Description=Clean files used by docker including the build cache when disk space is low
+Requires=docker-low-disk-gc.service
+
+[Timer]
+Unit=docker-low-disk-gc.service
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target

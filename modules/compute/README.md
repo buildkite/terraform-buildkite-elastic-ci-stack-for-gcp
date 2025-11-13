@@ -32,7 +32,7 @@ module "compute" {
 
   # Instance configuration
   machine_type      = "n1-standard-2"
-  image             = "debian-cloud/debian-12"
+  image             = "buildkite-ci-stack"
   root_disk_size_gb = 50
   root_disk_type    = "pd-balanced"
 
@@ -80,7 +80,7 @@ This module requires:
 | instance_tag | Network tag to apply to instances (must match firewall rules) | `string` | `"elastic-ci-agent"` | no |
 | agent_service_account_email | Email of the service account to attach to instances | `string` | n/a | yes |
 | machine_type | GCP machine type for agent instances | `string` | `"n1-standard-2"` | no |
-| image | Source image for boot disk (Debian-based recommended) | `string` | `"debian-cloud/debian-12"` | no |
+| image | Source image for boot disk. Use custom Packer image for Docker support, or Debian-based image. | `string` | `"debian-cloud/debian-12"` | no |
 | root_disk_size_gb | Size of the root disk in GB | `number` | `50` | no |
 | root_disk_type | Type of root disk (pd-standard, pd-balanced, pd-ssd) | `string` | `"pd-balanced"` | no |
 | buildkite_agent_token | Buildkite agent registration token | `string` | n/a | yes |
@@ -178,10 +178,41 @@ Optional autohealing using TCP health checks:
 | Mixed Instances Policy | N/A | v1.0.0 only supports on-demand |
 | Multiple Instance Types | N/A | v1.0.0 uses single machine type |
 
-## Buildkite Agent Installation
+## VM Image Options
 
-The startup script automatically installs the Buildkite agent using the official Debian package:
+### Custom Packer Image (Recommended for Production)
 
+For production use with Docker support, build and use the custom Packer image:
+
+1. **Build the image** (from `packer/` directory):
+   ```bash
+   ./build --project-id your-gcp-project-id
+   ```
+
+2. **Use the image family** in your Terraform configuration:
+   ```hcl
+   image = "buildkite-ci-stack"
+   ```
+
+The custom image includes:
+- Pre-installed Buildkite agent
+- Docker Engine with Compose v2 and Buildx
+- Multi-architecture build support (ARM/x86 cross-platform)
+- Automated Docker garbage collection
+- Disk space monitoring and self-protection
+- Centralized logging with Ops Agent
+
+See [DOCKER.md](../../DOCKER.md) for complete Docker features and [packer/README.md](../../packer/README.md) for build instructions.
+
+### Stock Debian Image (Basic Use)
+
+For testing or minimal setups without Docker:
+
+```hcl
+image = "debian-cloud/debian-12"
+```
+
+The startup script will install the Buildkite agent at boot time:
 1. Adds the Buildkite APT repository
 2. Installs the `buildkite-agent` package
 3. Configures the agent with:
@@ -191,7 +222,7 @@ The startup script automatically installs the Buildkite agent using the official
    - Custom tags
 4. Enables and starts the systemd service
 
-This follows the official [Buildkite documentation](https://buildkite.com/docs/agent/v3/debian).
+**Note**: Using stock Debian means Docker and other tools must be installed via startup scripts, increasing boot time.
 
 ## Security
 

@@ -1,0 +1,55 @@
+#!/bin/bash
+set -euxo pipefail
+
+echo "Configuring Docker..."
+
+# Install Docker daemon configuration
+echo "Installing Docker daemon configuration..."
+sudo cp /tmp/conf/docker/daemon.json /etc/docker/daemon.json
+sudo chown root:root /etc/docker/daemon.json
+sudo chmod 644 /etc/docker/daemon.json
+
+# Restart Docker to apply configuration
+sudo systemctl restart docker
+
+# Install garbage collection scripts
+echo "Installing Docker garbage collection scripts..."
+sudo cp /tmp/conf/docker/scripts/docker-gc /usr/local/bin/docker-gc
+sudo cp /tmp/conf/docker/scripts/docker-low-disk-gc /usr/local/bin/docker-low-disk-gc
+sudo cp /tmp/conf/docker/scripts/bk-check-disk-space.sh /usr/local/bin/bk-check-disk-space.sh
+
+sudo chown root:root /usr/local/bin/docker-gc
+sudo chown root:root /usr/local/bin/docker-low-disk-gc
+sudo chown root:root /usr/local/bin/bk-check-disk-space.sh
+
+sudo chmod 755 /usr/local/bin/docker-gc
+sudo chmod 755 /usr/local/bin/docker-low-disk-gc
+sudo chmod 755 /usr/local/bin/bk-check-disk-space.sh
+
+# Install systemd units for garbage collection timers
+echo "Installing systemd units..."
+sudo cp /tmp/conf/docker/systemd/docker-gc.service /etc/systemd/system/docker-gc.service
+sudo cp /tmp/conf/docker/systemd/docker-gc.timer /etc/systemd/system/docker-gc.timer
+sudo cp /tmp/conf/docker/systemd/docker-low-disk-gc.service /etc/systemd/system/docker-low-disk-gc.service
+sudo cp /tmp/conf/docker/systemd/docker-low-disk-gc.timer /etc/systemd/system/docker-low-disk-gc.timer
+
+sudo chown root:root /etc/systemd/system/docker-gc.*
+sudo chown root:root /etc/systemd/system/docker-low-disk-gc.*
+
+sudo chmod 644 /etc/systemd/system/docker-gc.service
+sudo chmod 644 /etc/systemd/system/docker-gc.timer
+sudo chmod 644 /etc/systemd/system/docker-low-disk-gc.service
+sudo chmod 644 /etc/systemd/system/docker-low-disk-gc.timer
+
+# Reload systemd to pick up new units
+sudo systemctl daemon-reload
+
+# Enable the timers (they will start on boot)
+echo "Enabling Docker garbage collection timers..."
+sudo systemctl enable docker-gc.timer
+sudo systemctl enable docker-low-disk-gc.timer
+
+# Don't start the timers now (we're in the image build phase)
+# They will start automatically on first boot
+
+echo "Docker configuration complete!"

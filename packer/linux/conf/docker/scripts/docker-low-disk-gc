@@ -1,0 +1,76 @@
+#!/bin/bash
+set -euo pipefail
+
+# Emergency garbage collection for Docker
+# This script runs when disk space is low and performs aggressive cleanup,
+# including removal of images and build caches.
+
+DOCKER_PRUNE_UNTIL=${DOCKER_PRUNE_UNTIL:-1h}
+
+# Get instance metadata
+INSTANCE_ID=$(curl -sf -H "Metadata-Flavor: Google" \
+  "http://metadata.google.internal/computeMetadata/v1/instance/id" || echo "unknown")
+ZONE=$(curl -sf -H "Metadata-Flavor: Google" \
+  "http://metadata.google.internal/computeMetadata/v1/instance/zone" | cut -d/ -f4 || echo "unknown")
+PROJECT_ID=$(curl -sf -H "Metadata-Flavor: Google" \
+  "http://metadata.google.internal/computeMetadata/v1/project/project-id" || echo "unknown")
+
+mark_instance_unhealthy() {
+  echo "Emergency: Marking instance as unhealthy due to disk cleanup failure"
+  
+  # Cancel running builds
+  killall -QUIT buildkite-agent || true
+  
+  # Get instance group manager name from instance metadata
+  INSTANCE_GROUP=$(curl -sf -H "Metadata-Flavor: Google" \
+    "http://metadata.google.internal/computeMetadata/v1/instance/attributes/created-by" | \
+    grep -oP 'instanceGroupManagers/\K[^/]+' || echo "")
+  
+  if [[ -n "$INSTANCE_GROUP" ]] && [[ "$ZONE" != "unknown" ]] && [[ "$PROJECT_ID" != "unknown" ]]; then
+    # Delete the instance from the managed instance group
+    # This will trigger the autoscaler to replace it with a healthy instance
+    gcloud compute instance-groups managed delete-instances "$INSTANCE_GROUP" \
+      --instances="$INSTANCE_ID" \
+      --zone="$ZONE" \
+      --project="$PROJECT_ID" || true
+  else
+    echo "Warning: Could not determine instance group, unable to mark unhealthy"
+  fi
+}
+
+# Set trap to mark instance unhealthy on error
+trap mark_instance_unhealthy ERR
+
+# Check disk space first
+if ! /usr/local/bin/bk-check-disk-space.sh; then
+  echo "Low disk space detected. Running aggressive Docker cleanup..."
+  echo "Pruning all Docker resources older than ${DOCKER_PRUNE_UNTIL}"
+  
+  # Prune containers
+  echo "Pruning containers..."
+  docker container prune --force --filter "until=${DOCKER_PRUNE_UNTIL}"
+  
+  # Prune networks
+  echo "Pruning networks..."
+  docker network prune --force --filter "until=${DOCKER_PRUNE_UNTIL}"
+  
+  # Prune images (including build cache)
+  echo "Pruning images..."
+  docker image prune --all --force --filter "until=${DOCKER_PRUNE_UNTIL}"
+  
+  # Prune build cache
+  echo "Pruning build cache..."
+  docker builder prune --all --force --filter "until=${DOCKER_PRUNE_UNTIL}"
+  
+  echo "Aggressive cleanup complete. Verifying disk space..."
+  
+  # Verify cleanup worked
+  if ! /usr/local/bin/bk-check-disk-space.sh; then
+    echo "ERROR: Disk space still critically low after cleanup" >&2
+    exit 1
+  fi
+  
+  echo "Disk space restored to healthy levels"
+else
+  echo "Disk space is healthy, no cleanup needed"
+fi
