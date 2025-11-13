@@ -3,7 +3,7 @@
 
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -22,11 +22,12 @@ provider "google" {
 module "networking" {
   source = "../../modules/networking"
 
-  network_name         = var.network_name
-  region              = var.region
-  enable_ssh_access   = var.enable_ssh_access
-  ssh_source_ranges   = var.ssh_source_ranges
-  instance_tag        = var.instance_tag
-  enable_iap_access   = var.enable_iap_access
+  project_id              = var.project
+  network_name            = var.network_name
+  region                  = var.region
+  enable_ssh_access       = var.enable_ssh_access
+  ssh_source_ranges       = var.ssh_source_ranges
+  instance_tag            = var.instance_tag
+  enable_iap_access       = var.enable_iap_access
   enable_secondary_ranges = var.enable_secondary_ranges
 }

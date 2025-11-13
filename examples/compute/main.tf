@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -17,10 +17,10 @@ provider "google" {
 module "compute" {
   source = "../../modules/compute"
 
-  project_id  = var.project
-  region      = var.region
-  zones       = var.zones
-  stack_name  = var.stack_name
+  project_id = var.project
+  region     = var.region
+  zones      = var.zones
+  stack_name = var.stack_name
 
   # Networking (from existing networking module outputs)
   network_self_link = var.network_self_link
@@ -37,6 +37,7 @@ module "compute" {
   root_disk_type    = var.root_disk_type
 
   # Buildkite configuration
+  buildkite_organization_slug  = var.buildkite_organization_slug
   buildkite_agent_token        = var.buildkite_agent_token
   buildkite_agent_token_secret = var.buildkite_agent_token_secret
   buildkite_agent_release      = var.buildkite_agent_release
