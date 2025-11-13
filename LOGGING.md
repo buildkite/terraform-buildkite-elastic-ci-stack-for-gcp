@@ -51,7 +51,7 @@ The logging system uses rsyslog to route systemd service logs to dedicated files
 
 The stack includes a custom rsyslog configuration (`/etc/rsyslog.d/10-buildkite-logging.conf`) that routes logs from systemd services to dedicated files:
 
-```
+```log
 :programname, isequal, "buildkite-agent" /var/log/buildkite-agent.log
 :programname, isequal, "dockerd" /var/log/docker.log
 :programname, isequal, "preemption-monitor" /var/log/preemption-monitor.log
@@ -70,12 +70,14 @@ The Ops Agent configuration is located at `/etc/google-cloud-ops-agent/config.ya
 ### Log Processing Pipeline
 
 **Buildkite Agent Logs:**
+
 1. Collected from `/var/log/buildkite-agent.log`
 2. Parsed using regex to extract timestamp, severity, and message
 3. Severity mapped to Cloud Logging severity levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 4. Sent to Cloud Logging with proper `LogEntry` structure
 
 **System Logs:**
+
 1. Collected from their respective files
 2. Sent to Cloud Logging as-is with minimal processing
 3. Tagged with instance metadata (instance ID, zone, project)
@@ -88,31 +90,36 @@ The Ops Agent configuration is located at `/etc/google-cloud-ops-agent/config.ya
 2. Use the following filters to view specific logs:
 
 **View Buildkite Agent logs:**
-```
+
+```text
 resource.type="gce_instance"
 log_name="projects/YOUR_PROJECT_ID/logs/buildkite_agent"
 ```
 
 **View System logs:**
-```
+
+```text
 resource.type="gce_instance"
 log_name="projects/YOUR_PROJECT_ID/logs/syslog"
 ```
 
 **View logs from a specific instance:**
-```
+
+```text
 resource.type="gce_instance"
 resource.labels.instance_id="INSTANCE_ID"
 ```
 
 **View logs with specific severity:**
-```
+
+```text
 severity >= ERROR
 ```
 
 ### Using the gcloud CLI
 
 **View recent Buildkite agent logs:**
+
 ```bash
 gcloud logging read "resource.type=gce_instance AND log_name=projects/YOUR_PROJECT_ID/logs/buildkite_agent" \
   --limit 50 \
@@ -120,6 +127,7 @@ gcloud logging read "resource.type=gce_instance AND log_name=projects/YOUR_PROJE
 ```
 
 **View logs from a specific instance:**
+
 ```bash
 gcloud logging read "resource.labels.instance_id=INSTANCE_ID" \
   --limit 100 \
@@ -127,6 +135,7 @@ gcloud logging read "resource.labels.instance_id=INSTANCE_ID" \
 ```
 
 **View logs from the last hour:**
+
 ```bash
 gcloud logging read "resource.type=gce_instance" \
   --freshness=1h \
@@ -135,30 +144,20 @@ gcloud logging read "resource.type=gce_instance" \
 ```
 
 **View ERROR-level logs only:**
+
 ```bash
 gcloud logging read "resource.type=gce_instance AND severity>=ERROR" \
   --limit 50 \
   --format json
 ```
 
-## Log Retention and Cost Management
+## Log Retention
 
 ### Default Retention
 
 - **Default retention**: 30 days for most logs
 - **Admin Activity logs**: 400 days
 - **Data Access logs**: 30 days
-
-### Cost Optimization
-
-Google Cloud Logging pricing is based on log ingestion volume. To manage costs:
-
-1. **Exclude verbose logs**: Configure log exclusion filters in Cloud Logging
-2. **Adjust log levels**: Modify Buildkite agent log level in agent configuration
-3. **Set up log sinks**: Export logs to cheaper storage (Cloud Storage, BigQuery)
-4. **Configure retention**: Adjust retention periods based on compliance needs
-
-For more information, see [Cloud Logging pricing](https://cloud.google.com/stackdriver/pricing).
 
 ## Differences from AWS Elastic CI Stack
 
@@ -182,6 +181,15 @@ The Ops Agent collects system metrics (CPU, memory, disk, network) and sends the
 - Alerting on resource utilization
 - Performance troubleshooting
 - Capacity planning
+
+### Buildkite Agent Metrics Function
+
+The `buildkite-agent-metrics` Cloud Function publishes custom Buildkite queue metrics (`scheduled_jobs` and `running_jobs`) to Cloud Monitoring for autoscaling. The function has built-in Cloud Logging integration, so its logs appear automatically in Cloud Logging under:
+
+```text
+resource.type="cloud_function"
+resource.labels.function_name="buildkite-agent-metrics"
+```
 
 For more information, see the [Cloud Monitoring documentation](https://cloud.google.com/monitoring/docs).
 

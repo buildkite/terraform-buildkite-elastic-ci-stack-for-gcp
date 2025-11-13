@@ -11,8 +11,6 @@
 
 logging:
   receivers:
-    # Application Logs
-    # Buildkite Agent logs (equivalent to /buildkite/buildkite-agent in AWS)
     buildkite_agent:
       type: files
       include_paths:
@@ -20,14 +18,12 @@ logging:
       record_log_file_path: true
 
     # Docker daemon logs (equivalent to /buildkite/docker-daemon in AWS)
-    # This will be created if Docker is installed
     docker_daemon:
       type: files
       include_paths:
         - /var/log/docker.log
       record_log_file_path: true
 
-    # Preemption monitor logs (equivalent to /buildkite/lifecycled in AWS)
     preemption_monitor:
       type: files
       include_paths:
@@ -36,37 +32,30 @@ logging:
 
     # System Logs
     # System messages (equivalent to /buildkite/system in AWS)
-    # Debian uses /var/log/syslog instead of /var/log/messages
     syslog:
       type: files
       include_paths:
         - /var/log/syslog
       record_log_file_path: true
 
-    # Auth/Security logs (equivalent to /buildkite/auth in AWS)
-    # Debian uses /var/log/auth.log instead of /var/log/secure
     auth_log:
       type: files
       include_paths:
         - /var/log/auth.log
       record_log_file_path: true
 
-    # Cloud Initialization Logs
-    # Cloud-init logs (equivalent to /buildkite/cloud-init in AWS)
     cloud_init:
       type: files
       include_paths:
         - /var/log/cloud-init.log
       record_log_file_path: true
 
-    # Cloud-init output (equivalent to /buildkite/cloud-init/output in AWS)
     cloud_init_output:
       type: files
       include_paths:
         - /var/log/cloud-init-output.log
       record_log_file_path: true
 
-    # Ops Agent self-logs (for troubleshooting the agent itself)
     ops_agent_logs:
       type: files
       include_paths:
@@ -74,7 +63,6 @@ logging:
       record_log_file_path: true
 
   processors:
-    # Parse severity from buildkite-agent logs
     parse_buildkite_severity:
       type: parse_regex
       field: message
@@ -98,7 +86,6 @@ logging:
 
   service:
     pipelines:
-      # Buildkite agent logs with severity parsing
       buildkite_pipeline:
         receivers:
           - buildkite_agent
@@ -106,7 +93,6 @@ logging:
           - parse_buildkite_severity
           - move_buildkite_severity
 
-      # System and infrastructure logs (no special processing needed)
       system_pipeline:
         receivers:
           - syslog
@@ -125,13 +111,12 @@ metrics:
     hostmetrics:
       type: hostmetrics
       collection_interval: 60s
-  
+
   processors:
-    # Don't exclude any metrics by default
     metrics_filter:
       type: exclude_metrics
       metrics_pattern: []
-  
+
   service:
     pipelines:
       default_pipeline:
