@@ -172,7 +172,6 @@ gcloud logging read "resource.type=gce_instance AND severity>=ERROR" \
 | **Log retention** | Configurable per log group | Project-wide with custom retention |
 | **Lifecycle service** | lifecycled | preemption-monitor |
 
-
 ## Integration with Cloud Monitoring
 
 The Ops Agent collects system metrics (CPU, memory, disk, network) and sends them to Cloud Monitoring. These metrics are used for:
