@@ -44,6 +44,7 @@ packer/
     │   ├── install-docker
     │   ├── configure-docker
     │   ├── install-gcp-tools
+    │   ├── install-ops-agent        # Google Cloud Ops Agent installation
     │   └── cleanup
     └── conf/                        # Configuration files
         ├── buildkite-agent/
@@ -51,6 +52,10 @@ packer/
         │   ├── scripts/
         │   ├── systemd/
         │   └── sudoers.conf
+        ├── ops-agent/
+        │   └── config.yaml          # Ops Agent logging configuration
+        └── rsyslog/
+            └── buildkite-logging.conf  # Rsyslog configuration for service logs
         ├── docker/
         │   ├── daemon.json          # Docker configuration
         │   ├── scripts/             # GC and disk check scripts
@@ -130,6 +135,29 @@ packer build \
 
 **Note**: The build script (`./build`) handles the directory changes automatically, so it can be run from the `packer/` directory.
 
+## What's Included in the Image
+
+The custom VM image includes:
+
+- **Buildkite Agent** - Latest stable version with pre-configured hooks and scripts
+- **Google Cloud Ops Agent** - Centralized logging and monitoring (see [LOGGING.md](../LOGGING.md))
+- **GCP Tools** - gcloud CLI and instance management utilities
+- **System Utilities** - Essential tools for CI/CD workloads (git, build-essential, etc.)
+- **Rsyslog Configuration** - Routes systemd service logs to files for collection
+- **Preemption Monitor** - Handles spot/preemptible instance termination gracefully
+
+## Centralized Logging
+
+The image includes the **Google Cloud Ops Agent** pre-installed and configured for centralized logging. This provides:
+
+- Automatic collection of application logs (Buildkite agent, Docker)
+- System log collection (syslog, auth logs)
+- Cloud initialization logs (cloud-init)
+- Structured log parsing with severity mapping
+- Integration with Cloud Logging for centralized analysis
+
+For detailed information about logging, see [LOGGING.md](../LOGGING.md).
+
 ## Notes
 
 - The build script automatically creates missing `../build` and `../plugins` directories
@@ -137,3 +165,5 @@ packer build \
 - All scripts are validated for syntax and made executable automatically
 - The build process creates a new image with timestamp-based naming
 - Build artifacts are minimal - the installation scripts handle missing files gracefully
+- Ops Agent is stopped during image build and starts automatically on instance boot
+

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Set non-interactive mode for apt operations
+export DEBIAN_FRONTEND=noninteractive
+export DEBCONF_NONINTERACTIVE_SEEN=true
+
+echo "Installing Google Cloud Ops Agent..."
+
+# Install the Ops Agent using Google's official installation script
+# This is the recommended method per https://cloud.google.com/stackdriver/docs/solutions/agents/ops-agent/installation
+curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+sudo bash add-google-cloud-ops-agent-repo.sh --also-install
+
+# Verify installation
+if ! google-cloud-ops-agent --version; then
+  echo "ERROR: Ops Agent installation failed"
+  exit 1
+fi
+
+echo "Ops Agent version:"
+google-cloud-ops-agent --version
+
+# Deploy custom Ops Agent configuration
+echo "Installing custom Ops Agent configuration..."
+sudo mkdir -p /etc/google-cloud-ops-agent
+if [ -f /tmp/conf/ops-agent/config.yaml ]; then
+  sudo cp /tmp/conf/ops-agent/config.yaml /etc/google-cloud-ops-agent/config.yaml
+  sudo chown root:root /etc/google-cloud-ops-agent/config.yaml
+  sudo chmod 644 /etc/google-cloud-ops-agent/config.yaml
+  echo "Custom Ops Agent configuration installed"
+else
+  echo "WARNING: Custom Ops Agent configuration not found at /tmp/conf/ops-agent/config.yaml"
+  echo "Using default Ops Agent configuration"
+fi
+
+# The agent will be enabled and started automatically by the installation script
+# We'll stop it here since this is a Packer image build
+# It will be started automatically when the VM boots
+echo "Stopping Ops Agent (will auto-start on VM boot)..."
+sudo systemctl stop google-cloud-ops-agent || true
+
+# Verify the service is installed correctly
+if ! systemctl is-enabled google-cloud-ops-agent; then
+  echo "ERROR: Ops Agent service is not enabled"
+  exit 1
+fi
+
+echo "Ops Agent installation complete."
+echo "The agent will start automatically when the VM boots."
