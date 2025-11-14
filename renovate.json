@@ -1,0 +1,34 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "preview:buildkite"
+  ],
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Group all Terraform provider updates together",
+      "matchManagers": ["terraform"],
+      "matchPackagePatterns": ["*"],
+      "groupName": "terraform providers"
+    },
+    {
+      "description": "Group all Buildkite pipeline updates together",
+      "matchManagers": ["buildkite"],
+      "groupName": "buildkite pipeline"
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "Update Buildkite Agent version in Packer install script",
+      "customType": "regex",
+      "fileMatch": ["^packer/linux/scripts/install-buildkite-agent$"],
+      "matchStrings": [
+        "AGENT_VERSION=(?<currentValue>.*?)\\n"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "buildkite/agent",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    }
+  ]
+}
