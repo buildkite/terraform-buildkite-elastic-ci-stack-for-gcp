@@ -50,6 +50,14 @@ resource "google_project_iam_member" "secret_accessor" {
   member  = "serviceAccount:${local.service_account_email}"
 }
 
+# Grant Storage Object Viewer to allow Cloud Build to access function source
+resource "google_project_iam_member" "storage_viewer" {
+  count   = local.create_service_account ? 1 : 0
+  project = var.project_id
+  role    = "roles/storage.objectViewer"
+  member  = "serviceAccount:${local.service_account_email}"
+}
+
 # Create the Cloud Function
 resource "google_cloudfunctions2_function" "metrics_function" {
   name        = var.function_name
