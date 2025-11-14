@@ -39,7 +39,7 @@ variable "buildkite_queue" {
 variable "schedule_interval" {
   description = "Cron expression for Cloud Scheduler"
   type        = string
-  default     = "* * * * *"  # Every minute
+  default     = "* * * * *" # Every minute
 }
 
 variable "enable_debug" {

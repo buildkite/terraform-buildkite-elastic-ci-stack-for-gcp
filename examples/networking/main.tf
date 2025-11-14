@@ -22,6 +22,7 @@ provider "google" {
 module "networking" {
   source = "../../modules/networking"
 
+  project_id              = var.project
   network_name            = var.network_name
   region                  = var.region
   enable_ssh_access       = var.enable_ssh_access

@@ -112,6 +112,20 @@ resource "google_project_iam_member" "metrics_secret_accessor" {
   member  = "serviceAccount:${google_service_account.metrics.email}"
 }
 
+# access Cloud Storage for Cloud Function builds
+resource "google_project_iam_member" "metrics_storage_object_viewer" {
+  project = var.project_id
+  role    = "roles/storage.objectViewer"
+  member  = "serviceAccount:${google_service_account.metrics.email}"
+}
+
+# access Artifact Registry for Cloud Function build caching (needs write for cache)
+resource "google_project_iam_member" "metrics_artifact_registry_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.metrics.email}"
+}
+
 # Allows the metrics function to scale instance groups based on queue depth
 resource "google_project_iam_custom_role" "metrics_autoscaler" {
   role_id     = var.metrics_custom_role_id

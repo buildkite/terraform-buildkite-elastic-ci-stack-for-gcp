@@ -82,3 +82,15 @@ variable "labels" {
     purpose    = "buildkite-metrics"
   }
 }
+
+variable "function_source_bucket" {
+  description = "GCS bucket containing the pre-built Cloud Function zip file"
+  type        = string
+  default     = "buildkite-cloud-functions"
+}
+
+variable "function_source_object" {
+  description = "Path to the Cloud Function zip file in the GCS bucket"
+  type        = string
+  default     = "buildkite-agent-metrics/cloud-function-latest.zip"
+}

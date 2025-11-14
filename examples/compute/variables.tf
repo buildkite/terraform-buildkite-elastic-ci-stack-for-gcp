@@ -70,6 +70,11 @@ variable "root_disk_type" {
 }
 
 # Buildkite configuration
+variable "buildkite_organization_slug" {
+  description = "Buildkite organization slug (from your Buildkite URL, e.g., 'my-org' from buildkite.com/my-org)"
+  type        = string
+}
+
 variable "buildkite_agent_token" {
   description = "Buildkite agent registration token (leave empty if using buildkite_agent_token_secret)"
   type        = string
@@ -135,7 +140,7 @@ variable "autoscaling_jobs_per_instance" {
 variable "enable_autoscaling" {
   description = "Enable autoscaling based on custom Buildkite metrics (requires buildkite-agent-metrics function)"
   type        = bool
-  default     = false
+  default     = true
 }
 
 # Health check configuration

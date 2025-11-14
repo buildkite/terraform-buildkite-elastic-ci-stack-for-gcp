@@ -1,17 +1,17 @@
 locals {
   # Determine if we need to create a service account
   create_service_account = var.service_account_email == ""
-  
+
   # Use provided service account or create a new one
   service_account_email = local.create_service_account ? google_service_account.metrics_function[0].email : var.service_account_email
-  
+
   # Service account ID for creation
   service_account_id = "${var.function_name}-sa"
-  
+
   # Determine token configuration method
   use_secret_manager = var.buildkite_agent_token_secret != ""
-  use_env_token     = var.buildkite_agent_token != ""
-  
+  use_env_token      = var.buildkite_agent_token != ""
+
   # Scheduler job name
   scheduler_job_name = "${var.function_name}-scheduler"
 }
@@ -19,7 +19,7 @@ locals {
 # Validate that exactly one token method is configured
 resource "null_resource" "token_validation" {
   count = (local.use_secret_manager && local.use_env_token) || (!local.use_secret_manager && !local.use_env_token) ? 1 : 0
-  
+
   provisioner "local-exec" {
     command = "echo 'ERROR: Exactly one of buildkite_agent_token or buildkite_agent_token_secret must be provided' && exit 1"
   }
@@ -34,18 +34,27 @@ resource "google_service_account" "metrics_function" {
   project      = var.project_id
 }
 
-# Grant necessary permissions to the service account
+# Grant necessary permissions to the service account (only if we created it)
 resource "google_project_iam_member" "metrics_writer" {
+  count   = local.create_service_account ? 1 : 0
   project = var.project_id
   role    = "roles/monitoring.metricWriter"
   member  = "serviceAccount:${local.service_account_email}"
 }
 
-# Grant Secret Manager access if using secret
+# Grant Secret Manager access if using secret (only if we created the SA)
 resource "google_project_iam_member" "secret_accessor" {
-  count   = local.use_secret_manager ? 1 : 0
+  count   = local.create_service_account && local.use_secret_manager ? 1 : 0
   project = var.project_id
   role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${local.service_account_email}"
+}
+
+# Grant Storage Object Viewer to allow Cloud Build to access function source
+resource "google_project_iam_member" "storage_viewer" {
+  count   = local.create_service_account ? 1 : 0
+  project = var.project_id
+  role    = "roles/storage.objectViewer"
   member  = "serviceAccount:${local.service_account_email}"
 }
 
@@ -57,13 +66,14 @@ resource "google_cloudfunctions2_function" "metrics_function" {
   description = "Collects Buildkite agent metrics and sends them to Cloud Monitoring"
 
   build_config {
-    runtime     = "go124"
-    entry_point = "buildkite-agent-metrics"
-    
+    runtime         = "go124"
+    entry_point     = "buildkite-agent-metrics"
+    service_account = "projects/${var.project_id}/serviceAccounts/${local.service_account_email}"
+
     source {
       storage_source {
-        bucket = "buildkite-cloud-functions"
-        object = "buildkite-agent-metrics/cloud-function-latest.zip"
+        bucket = var.function_source_bucket
+        object = var.function_source_object
       }
     }
   }
@@ -98,11 +108,6 @@ resource "google_cloudfunctions2_function" "metrics_function" {
   }
 
   labels = var.labels
-
-  depends_on = [
-    google_project_iam_member.metrics_writer,
-    google_project_iam_member.secret_accessor
-  ]
 }
 
 # Grant the service account permission to invoke the function
@@ -121,7 +126,7 @@ resource "google_cloud_scheduler_job" "metrics_trigger" {
   schedule    = var.schedule_interval
   project     = var.project_id
   region      = var.region
-  
+
   retry_config {
     retry_count = 1
   }
@@ -129,7 +134,7 @@ resource "google_cloud_scheduler_job" "metrics_trigger" {
   http_target {
     http_method = "POST"
     uri         = google_cloudfunctions2_function.metrics_function.service_config[0].uri
-    
+
     oidc_token {
       service_account_email = local.service_account_email
     }

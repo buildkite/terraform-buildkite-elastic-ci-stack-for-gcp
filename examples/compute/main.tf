@@ -37,6 +37,7 @@ module "compute" {
   root_disk_type    = var.root_disk_type
 
   # Buildkite configuration
+  buildkite_organization_slug  = var.buildkite_organization_slug
   buildkite_agent_token        = var.buildkite_agent_token
   buildkite_agent_token_secret = var.buildkite_agent_token_secret
   buildkite_agent_release      = var.buildkite_agent_release
