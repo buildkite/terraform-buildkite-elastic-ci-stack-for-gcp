@@ -1,0 +1,126 @@
+# Google Cloud Ops Agent Configuration for Elastic CI Stack
+# This configuration collects logs from various sources similar to CloudWatch Agent in AWS
+#
+# Log Collection Strategy:
+# - Application logs: Buildkite agent, Docker (when installed)
+# - System logs: syslog, auth.log
+# - Cloud initialization logs: cloud-init
+# - Preemption monitoring: preemption-monitor service
+#
+# All logs are tagged with the instance name and sent to Cloud Logging
+
+logging:
+  receivers:
+    buildkite_agent:
+      type: files
+      include_paths:
+        - /var/log/buildkite-agent.log
+      record_log_file_path: true
+
+    # Docker daemon logs (equivalent to /buildkite/docker-daemon in AWS)
+    docker_daemon:
+      type: files
+      include_paths:
+        - /var/log/docker.log
+      record_log_file_path: true
+
+    preemption_monitor:
+      type: files
+      include_paths:
+        - /var/log/preemption-monitor.log
+      record_log_file_path: true
+
+    # System Logs
+    # System messages (equivalent to /buildkite/system in AWS)
+    syslog:
+      type: files
+      include_paths:
+        - /var/log/syslog
+      record_log_file_path: true
+
+    auth_log:
+      type: files
+      include_paths:
+        - /var/log/auth.log
+      record_log_file_path: true
+
+    cloud_init:
+      type: files
+      include_paths:
+        - /var/log/cloud-init.log
+      record_log_file_path: true
+
+    cloud_init_output:
+      type: files
+      include_paths:
+        - /var/log/cloud-init-output.log
+      record_log_file_path: true
+
+    ops_agent_logs:
+      type: files
+      include_paths:
+        - /var/log/google-cloud-ops-agent/subagents/logging-module.log
+      record_log_file_path: true
+
+  processors:
+    parse_buildkite_severity:
+      type: parse_regex
+      field: message
+      regex: '^\[(?<timestamp>[^\]]+)\] \[(?<severity>[^\]]+)\] (?<message>.*)'
+      time_key: timestamp
+      time_format: "%Y-%m-%d %H:%M:%S"
+
+    # Move parsed severity to proper LogEntry field
+    move_buildkite_severity:
+      type: modify_fields
+      fields:
+        severity:
+          copy_from: jsonPayload.severity
+          map_values:
+            DEBUG: DEBUG
+            INFO: INFO
+            WARN: WARNING
+            WARNING: WARNING
+            ERROR: ERROR
+            FATAL: CRITICAL
+
+  service:
+    pipelines:
+      buildkite_pipeline:
+        receivers:
+          - buildkite_agent
+        processors:
+          - parse_buildkite_severity
+          - move_buildkite_severity
+
+      system_pipeline:
+        receivers:
+          - syslog
+          - auth_log
+          - docker_daemon
+          - preemption_monitor
+          - cloud_init
+          - cloud_init_output
+          - ops_agent_logs
+
+# Metrics collection (using default hostmetrics)
+# This configuration keeps the default metrics collection
+# which includes CPU, memory, disk, network, and process metrics
+metrics:
+  receivers:
+    hostmetrics:
+      type: hostmetrics
+      collection_interval: 60s
+
+  processors:
+    metrics_filter:
+      type: exclude_metrics
+      metrics_pattern: []
+
+  service:
+    pipelines:
+      default_pipeline:
+        receivers:
+          - hostmetrics
+        processors:
+          - metrics_filter
