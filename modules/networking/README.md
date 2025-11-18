@@ -44,7 +44,7 @@ module "networking" {
 }
 ```
 
-## Input Variables
+## Variables
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
