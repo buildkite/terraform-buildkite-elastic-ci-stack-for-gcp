@@ -12,14 +12,13 @@ echo "Installing Google Cloud Ops Agent..."
 curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
 sudo bash add-google-cloud-ops-agent-repo.sh --also-install
 
-# Verify installation
-if ! google-cloud-ops-agent --version; then
-  echo "ERROR: Ops Agent installation failed"
+# Verify installation by checking if the service exists
+if ! systemctl list-unit-files google-cloud-ops-agent.service &>/dev/null; then
+  echo "ERROR: Ops Agent installation failed - service not found"
   exit 1
 fi
 
-echo "Ops Agent version:"
-google-cloud-ops-agent --version
+echo "Ops Agent service installed successfully"
 
 # Deploy custom Ops Agent configuration
 echo "Installing custom Ops Agent configuration..."
