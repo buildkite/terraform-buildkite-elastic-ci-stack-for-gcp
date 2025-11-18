@@ -67,7 +67,7 @@ This module requires:
 1. **Networking Module** - Must be deployed first to provide VPC network and subnets
 2. **IAM Module** - Must be deployed first to provide service account for instances
 
-## Inputs
+## Variables
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
