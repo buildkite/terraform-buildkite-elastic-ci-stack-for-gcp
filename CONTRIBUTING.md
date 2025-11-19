@@ -10,7 +10,7 @@ This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDU
 
 ### Reporting Bugs
 
-- Use the [GitHub issue tracker](https://github.com/buildkite/elastic-ci-stack-for-gcp/issues)
+- Use the [GitHub issue tracker](https://github.com/buildkite/terraform-buildkite-elastic-ci-stack-for-gcp/issues)
 - Check if the bug has already been reported
 - Include:
   - Terraform version
