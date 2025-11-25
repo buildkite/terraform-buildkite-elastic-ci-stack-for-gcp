@@ -24,7 +24,7 @@
       "customType": "regex",
       "fileMatch": ["^packer/linux/scripts/install-buildkite-agent$"],
       "matchStrings": [
-        "AGENT_VERSION=(?<currentValue>.*?)\\n"
+        "AGENT_VERSION=(?<currentValue>[^\\s]+)"
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "buildkite/agent",
