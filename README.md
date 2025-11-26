@@ -24,7 +24,8 @@ Create a `main.tf` file:
 
 ```hcl
 module "buildkite_stack" {
-  source = "github.com/buildkite/terraform-buildkite-elastic-ci-stack-for-gcp"
+  source  = "buildkite/elastic-ci-stack-for-gcp/buildkite"
+  version = ">= 0.1.0"
 
   # Required
   project_id                  = "your-gcp-project"
