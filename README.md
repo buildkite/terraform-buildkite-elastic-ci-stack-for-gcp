@@ -23,9 +23,9 @@ This is a GCP implementation inspired by Buildkite's [Elastic CI Stack for AWS](
 Create a `main.tf` file:
 
 ```hcl
-module "buildkite_stack" {
+module "elastic-ci-stack-for-gcp" {
   source  = "buildkite/elastic-ci-stack-for-gcp/buildkite"
-  version = ">= 0.1.0"
+  version = "0.1.0"
 
   # Required
   project_id                  = "your-gcp-project"
