@@ -51,8 +51,9 @@ resource "google_project_iam_member" "secret_accessor" {
 }
 
 # Grant Storage Object Viewer to allow Cloud Build to access function source
+# This is always needed for Cloud Functions v2, regardless of whether we created the SA
+# The gcf-v2-sources-* bucket is automatically created and needs read access
 resource "google_project_iam_member" "storage_viewer" {
-  count   = local.create_service_account ? 1 : 0
   project = var.project_id
   role    = "roles/storage.objectViewer"
   member  = "serviceAccount:${local.service_account_email}"
