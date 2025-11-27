@@ -8,7 +8,7 @@ The module creates:
 - A Cloud Function (Gen 2) that fetches metrics from the Buildkite API
 - A Cloud Scheduler job to trigger the function periodically
 - A service account with necessary permissions (optional)
-- IAM bindings for metric writing and secret access
+- IAM bindings for metric writing, secret access, and cloud function source access
 
 ## Prerequisites
 
