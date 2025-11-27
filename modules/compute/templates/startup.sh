@@ -28,8 +28,8 @@ sed -i "s/xxx/$AGENT_TOKEN/g" /etc/buildkite-agent/buildkite-agent.cfg
 # Use token from variable
 sed -i "s/xxx/${buildkite_agent_token}/g" /etc/buildkite-agent/buildkite-agent.cfg
 %{ endif ~}
-sed -i "s/# queue=.*/queue=\"${buildkite_queue}\"/g" /etc/buildkite-agent/buildkite-agent.cfg
-sed -i "s~# endpoint=.*~endpoint=\"${buildkite_api_endpoint}\"~g" /etc/buildkite-agent/buildkite-agent.cfg
+echo "queue=\"${buildkite_queue}\"" >> /etc/buildkite-agent/buildkite-agent.cfg
+echo "endpoint=\"${buildkite_api_endpoint}\"" >> /etc/buildkite-agent/buildkite-agent.cfg
 
 %{ if buildkite_agent_tags != "" ~}
 sed -i "s/# tags=.*/tags=\"${buildkite_agent_tags}\"/g" /etc/buildkite-agent/buildkite-agent.cfg
