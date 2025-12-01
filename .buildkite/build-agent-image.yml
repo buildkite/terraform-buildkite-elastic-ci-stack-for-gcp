@@ -1,4 +1,4 @@
- env:
+env:
   GCP_PROJECT_ID: "buildkite-gcp-stack"
   GCP_BUILD_ZONE: "us-central1-a"
 
