@@ -1,0 +1,32 @@
+ env:
+  GCP_PROJECT_ID: "buildkite-gcp-stack"
+  GCP_BUILD_ZONE: "us-central1-a"
+
+steps:
+  # Build x86-64 image
+  - label: ":hammer: Build x86-64 Image"
+    key: "build-x86"
+    command: .buildkite/scripts/build-and-publish-image.sh x86-64
+    plugins:
+      - gcp-workload-identity-federation#v2.0.0:
+          audience: "//iam.googleapis.com/projects/203137002969/locations/global/workloadIdentityPools/buildkite-image-builder-pool/providers/buildkite-image-builder"
+          service-account: "gcp-image-builder-ci@buildkite-gcp-stack.iam.gserviceaccount.com"
+    agents:
+      queue: "gcp"
+    artifact_paths:
+      - "packer/linux/*.log"
+      - ".buildkite/x86-64-image-name.txt"
+
+  # Build ARM64 image
+  - label: ":hammer: Build ARM64 Image"
+    key: "build-arm64"
+    command: .buildkite/scripts/build-and-publish-image.sh arm64
+    plugins:
+      - gcp-workload-identity-federation#v2.0.0:
+          audience: "//iam.googleapis.com/projects/203137002969/locations/global/workloadIdentityPools/buildkite-image-builder-pool/providers/buildkite-image-builder"
+          service-account: "gcp-image-builder-ci@buildkite-gcp-stack.iam.gserviceaccount.com"
+    agents:
+      queue: "gcp"
+    artifact_paths:
+      - "packer/linux/*.log"
+      - ".buildkite/arm64-image-name.txt"
