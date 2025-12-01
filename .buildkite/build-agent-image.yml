@@ -8,7 +8,7 @@ steps:
     key: "build-x86"
     command: .buildkite/scripts/build-and-publish-image.sh x86-64
     plugins:
-      - gcp-workload-identity-federation#v2.0.0:
+      - gcp-workload-identity-federation#v1.5.0:
           audience: "//iam.googleapis.com/projects/203137002969/locations/global/workloadIdentityPools/buildkite-image-builder-pool/providers/buildkite-image-builder"
           service-account: "gcp-image-builder-ci@buildkite-gcp-stack.iam.gserviceaccount.com"
     agents:
@@ -22,7 +22,7 @@ steps:
     key: "build-arm64"
     command: .buildkite/scripts/build-and-publish-image.sh arm64
     plugins:
-      - gcp-workload-identity-federation#v2.0.0:
+      - gcp-workload-identity-federation#v1.5.0:
           audience: "//iam.googleapis.com/projects/203137002969/locations/global/workloadIdentityPools/buildkite-image-builder-pool/providers/buildkite-image-builder"
           service-account: "gcp-image-builder-ci@buildkite-gcp-stack.iam.gserviceaccount.com"
     agents:
