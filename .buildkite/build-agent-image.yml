@@ -3,30 +3,21 @@ env:
   GCP_BUILD_ZONE: "us-central1-a"
 
 steps:
-  # Build x86-64 image
-  - label: ":hammer: Build x86-64 Image"
-    key: "build-x86"
-    command: .buildkite/scripts/build-and-publish-image.sh x86-64
+  - label: ":hammer: Build {{matrix.arch}} Image"
+    command: .buildkite/scripts/build-and-publish-image {{matrix.arch}}
     plugins:
       - gcp-workload-identity-federation#v1.5.0:
           audience: "//iam.googleapis.com/projects/203137002969/locations/global/workloadIdentityPools/buildkite-image-builder-pool/providers/buildkite-image-builder"
           service-account: "gcp-image-builder-ci@buildkite-gcp-stack.iam.gserviceaccount.com"
+      - docker#5.13.0:
+          image: "hashicorp/packer:1.14"
     agents:
       queue: "gcp"
     artifact_paths:
       - "packer/linux/*.log"
-      - ".buildkite/x86-64-image-name.txt"
-
-  # Build ARM64 image
-  - label: ":hammer: Build ARM64 Image"
-    key: "build-arm64"
-    command: .buildkite/scripts/build-and-publish-image.sh arm64
-    plugins:
-      - gcp-workload-identity-federation#v1.5.0:
-          audience: "//iam.googleapis.com/projects/203137002969/locations/global/workloadIdentityPools/buildkite-image-builder-pool/providers/buildkite-image-builder"
-          service-account: "gcp-image-builder-ci@buildkite-gcp-stack.iam.gserviceaccount.com"
-    agents:
-      queue: "gcp"
-    artifact_paths:
-      - "packer/linux/*.log"
-      - ".buildkite/arm64-image-name.txt"
+      - ".buildkite/{{matrix.arch}}-image-name.txt"
+    matrix:
+      setup:
+        arch:
+          - amd64
+          - arm64

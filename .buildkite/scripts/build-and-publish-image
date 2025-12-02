@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # Build and publish a GCP VM image
-# Usage: ./build-and-publish-image.sh <arch>
+# Usage: ./build-and-publish-image <arch>
 
 ARCH=$1
 PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
