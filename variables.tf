@@ -191,12 +191,12 @@ variable "autoscaling_jobs_per_instance" {
 # Networking Configuration
 
 variable "network_name" {
-  description = "Name of the VPC network to create. The stack will create a new VPC with this name."
+  description = "Name of the VPC network to create. Defaults to '{stack_name}-network' if not specified."
   type        = string
-  default     = "elastic-ci-stack"
+  default     = null
 
   validation {
-    condition     = can(regex("^[a-z][-a-z0-9]{0,61}[a-z0-9]$", var.network_name))
+    condition     = var.network_name == null || can(regex("^[a-z][-a-z0-9]{0,61}[a-z0-9]$", var.network_name))
     error_message = "Network name must be a valid GCP resource name: lowercase letters, numbers, and hyphens only."
   }
 }
@@ -221,12 +221,12 @@ variable "ssh_source_ranges" {
 }
 
 variable "instance_tag" {
-  description = "Network tag applied to instances for firewall targeting. Generally no need to change."
+  description = "Network tag applied to instances for firewall targeting. Defaults to '{stack_name}-agent' if not specified."
   type        = string
-  default     = "elastic-ci-agent"
+  default     = null
 
   validation {
-    condition     = can(regex("^[a-z][-a-z0-9]{0,61}[a-z0-9]$", var.instance_tag))
+    condition     = var.instance_tag == null || can(regex("^[a-z][-a-z0-9]{0,61}[a-z0-9]$", var.instance_tag))
     error_message = "Instance tag must be a valid GCP network tag."
   }
 }
@@ -246,45 +246,45 @@ variable "enable_secondary_ranges" {
 # IAM Configuration
 
 variable "agent_service_account_id" {
-  description = "ID for the Buildkite agent service account. Generally no need to change."
+  description = "ID for the Buildkite agent service account. Defaults to '{stack_name}-agent' if not specified."
   type        = string
-  default     = "elastic-ci-agent"
+  default     = null
 
   validation {
-    condition     = can(regex("^[a-z][-a-z0-9]{4,28}[a-z0-9]$", var.agent_service_account_id))
+    condition     = var.agent_service_account_id == null || can(regex("^[a-z][-a-z0-9]{4,28}[a-z0-9]$", var.agent_service_account_id))
     error_message = "Service account ID must be 6-30 characters, lowercase letters, digits, and hyphens only."
   }
 }
 
 variable "metrics_service_account_id" {
-  description = "ID for the metrics function service account. Generally no need to change."
+  description = "ID for the metrics function service account. Defaults to '{stack_name}-metrics' if not specified."
   type        = string
-  default     = "elastic-ci-metrics"
+  default     = null
 
   validation {
-    condition     = can(regex("^[a-z][-a-z0-9]{4,28}[a-z0-9]$", var.metrics_service_account_id))
+    condition     = var.metrics_service_account_id == null || can(regex("^[a-z][-a-z0-9]{4,28}[a-z0-9]$", var.metrics_service_account_id))
     error_message = "Service account ID must be 6-30 characters, lowercase letters, digits, and hyphens only."
   }
 }
 
 variable "agent_custom_role_id" {
-  description = "ID for the custom IAM role for agent instance management. Generally no need to change."
+  description = "ID for the custom IAM role for agent instance management. Defaults to '{stack_name}AgentInstanceMgmt' if not specified."
   type        = string
-  default     = "elasticCiAgentInstanceMgmt"
+  default     = null
 
   validation {
-    condition     = can(regex("^[a-zA-Z0-9_\\.]{3,64}$", var.agent_custom_role_id))
+    condition     = var.agent_custom_role_id == null || can(regex("^[a-zA-Z0-9_\\.]{3,64}$", var.agent_custom_role_id))
     error_message = "Custom role ID must be 3-64 characters, letters, numbers, underscores, and periods only."
   }
 }
 
 variable "metrics_custom_role_id" {
-  description = "ID for the custom IAM role for metrics autoscaling. Generally no need to change."
+  description = "ID for the custom IAM role for metrics autoscaling. Defaults to '{stack_name}MetricsAutoscaler' if not specified."
   type        = string
-  default     = "elasticCiMetricsAutoscaler"
+  default     = null
 
   validation {
-    condition     = can(regex("^[a-zA-Z0-9_\\.]{3,64}$", var.metrics_custom_role_id))
+    condition     = var.metrics_custom_role_id == null || can(regex("^[a-zA-Z0-9_\\.]{3,64}$", var.metrics_custom_role_id))
     error_message = "Custom role ID must be 3-64 characters, letters, numbers, underscores, and periods only."
   }
 }
