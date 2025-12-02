@@ -11,6 +11,7 @@ steps:
           service-account: "gcp-image-builder-ci@buildkite-gcp-stack.iam.gserviceaccount.com"
       - docker#v5.13.0:
           image: "hashicorp/packer:1.14"
+          entrypoint: /bin/sh
     agents:
       queue: "gcp"
     artifact_paths:
