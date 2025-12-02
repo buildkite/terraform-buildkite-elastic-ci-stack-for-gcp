@@ -27,9 +27,18 @@ echo "--- :earth_americas: Making image public"
 
 # Get the actual image name that was created (format: buildkite-ci-stack-ARCH-YYYY-MM-DD-HHMM)
 # Look for images created in the last 5 minutes
+# Use portable date syntax that works on both macOS (BSD) and Linux (GNU)
+if date -v -5M &>/dev/null; then
+  # macOS/BSD date
+  FIVE_MIN_AGO=$(date -u -v -5M '+%Y-%m-%dT%H:%M:%S')
+else
+  # GNU date
+  FIVE_MIN_AGO=$(date -u -d '5 minutes ago' '+%Y-%m-%dT%H:%M:%S')
+fi
+
 IMAGE_NAME=$(gcloud compute images list \
   --project="$PROJECT_ID" \
-  --filter="name:buildkite-ci-stack-${ARCH} AND creationTimestamp>$(date -u -d '5 minutes ago' '+%Y-%m-%dT%H:%M:%S')" \
+  --filter="name:buildkite-ci-stack-${ARCH} AND creationTimestamp>$FIVE_MIN_AGO" \
   --format="value(name)" \
   --sort-by="~creationTimestamp" \
   --limit=1)
