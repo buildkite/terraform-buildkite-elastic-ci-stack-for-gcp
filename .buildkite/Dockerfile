@@ -20,3 +20,5 @@ RUN packer version && gcloud version
 
 # Set the working directory
 WORKDIR /workspace
+
+ENTRYPOINT [ "" ]
