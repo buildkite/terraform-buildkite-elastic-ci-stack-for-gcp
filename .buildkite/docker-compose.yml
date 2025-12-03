@@ -1,0 +1,15 @@
+services:
+  packer-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace
+    working_dir: /workspace
+    environment:
+      - GCP_PROJECT_ID
+      - GCP_BUILD_ZONE
+      - BUILDKITE_BUILD_NUMBER
+      - BUILDKITE_COMMIT
+      - BUILDKITE
+      - GOOGLE_APPLICATION_CREDENTIALS=/workspace/.google-credentials.json
