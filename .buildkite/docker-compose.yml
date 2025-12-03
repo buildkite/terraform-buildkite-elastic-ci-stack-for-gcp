@@ -12,4 +12,3 @@ services:
       - BUILDKITE_BUILD_NUMBER
       - BUILDKITE_COMMIT
       - BUILDKITE
-      - GOOGLE_APPLICATION_CREDENTIALS=/workspace/.google-credentials.json
