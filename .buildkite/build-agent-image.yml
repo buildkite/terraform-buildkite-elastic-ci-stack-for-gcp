@@ -8,9 +8,9 @@ steps:
       - gcp-workload-identity-federation#v1.5.0:
           audience: "//iam.googleapis.com/projects/203137002969/locations/global/workloadIdentityPools/buildkite-image-builder-pool/providers/buildkite-image-builder"
           service-account: "gcp-image-builder-ci@buildkite-gcp-stack.iam.gserviceaccount.com"
-      - docker#v5.13.0:
-          image: "hashicorp/packer:1.14"
-          entrypoint: ""
+      - docker-compose#v5.12.1:
+          run: packer-builder
+          config: .buildkite/docker-compose.yml
           command: [".buildkite/scripts/build-and-publish-image", "{{matrix.arch}}"]
     agents:
       queue: "gcp"
