@@ -12,6 +12,7 @@ steps:
           run: packer-builder
           config: .buildkite/docker-compose.yml
           command: [".buildkite/scripts/build-and-publish-image", "{{matrix.arch}}"]
+          propagate-gcp-auth-tokens: true
     agents:
       queue: "gcp"
     artifact_paths:
