@@ -12,6 +12,7 @@ steps:
       - docker#v5.13.0:
           image: "hashicorp/packer:1.14"
           entrypoint: /bin/sh
+          shell: ["/bin/sh", "-e", "-c"]
     agents:
       queue: "gcp"
     artifact_paths:
