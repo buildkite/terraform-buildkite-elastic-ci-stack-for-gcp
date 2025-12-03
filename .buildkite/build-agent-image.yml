@@ -20,5 +20,5 @@ steps:
     matrix:
       setup:
         arch:
-          - amd64
+          - x86-64
           - arm64
