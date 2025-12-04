@@ -78,10 +78,15 @@ check_requirements() {
     fi
 
     # Check if authenticated with gcloud
-    if ! gcloud auth application-default print-access-token &> /dev/null; then
-        log_error "GCP authentication not found."
-        log_info "Please run: gcloud auth application-default login"
-        exit 1
+    # Skip check if running in CI with credentials from workload identity federation
+    if [[ -z "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]] && [[ -z "${CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE:-}" ]]; then
+        if ! gcloud auth application-default print-access-token &> /dev/null; then
+            log_error "GCP authentication not found."
+            log_info "Please run: gcloud auth application-default login"
+            exit 1
+        fi
+    else
+        log_info "Using GCP credentials from application credentials file"
     fi
 
     # Check if required directories exist

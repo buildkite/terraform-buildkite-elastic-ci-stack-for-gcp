@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ..:/workspace
+      - ~/.config/gcloud:/root/.config/gcloud:ro
     working_dir: /workspace
     environment:
       - GCP_PROJECT_ID
