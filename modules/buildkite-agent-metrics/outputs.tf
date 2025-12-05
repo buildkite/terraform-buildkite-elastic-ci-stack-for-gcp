@@ -22,3 +22,8 @@ output "metrics_namespace" {
   description = "The Cloud Monitoring namespace where metrics will be written"
   value       = "custom.googleapis.com/buildkite"
 }
+
+output "metrics_initialized" {
+  description = "Marker output that indicates the metrics function has been invoked and the custom metric should exist. Use this as a dependency for autoscalers."
+  value       = null_resource.initial_metrics_invocation.id
+}

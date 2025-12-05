@@ -146,4 +146,9 @@ resource "google_compute_region_autoscaler" "buildkite_agents" {
 
     mode = "ON"
   }
+
+  # Ensure the metrics function has been invoked and the custom metric exists
+  # before creating the autoscaler. Without this, the autoscaler may be created
+  # with an undefined metric reference.
+  depends_on = [var.autoscaler_depends_on]
 }
