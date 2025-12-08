@@ -96,6 +96,10 @@ module "compute" {
 
   # IAM (from IAM module)
   agent_service_account_email = module.iam.agent_service_account_email
+
+  # Ensure the autoscaler waits for the metrics function to be invoked
+  # so the custom metric exists before the autoscaler is created
+  autoscaler_depends_on = var.enable_autoscaling ? module.buildkite_metrics : []
 }
 
 module "buildkite_metrics" {
@@ -109,6 +113,7 @@ module "buildkite_metrics" {
   buildkite_agent_token        = var.buildkite_agent_token
   buildkite_agent_token_secret = var.buildkite_agent_token_secret
   buildkite_queue              = var.buildkite_queue
+  buildkite_organization_slug  = var.buildkite_organization_slug
   service_account_email        = module.iam.metrics_service_account_email
 
   labels = var.labels

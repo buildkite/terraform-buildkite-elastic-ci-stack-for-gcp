@@ -305,3 +305,9 @@ variable "enable_autoscaling" {
   type        = bool
   default     = true
 }
+
+variable "autoscaler_depends_on" {
+  description = "List of resources the autoscaler should depend on (e.g., metrics function initialization)"
+  type        = any
+  default     = []
+}

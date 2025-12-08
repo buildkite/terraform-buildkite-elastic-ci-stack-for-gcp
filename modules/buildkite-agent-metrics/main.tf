@@ -109,6 +109,14 @@ resource "google_cloudfunctions2_function" "metrics_function" {
   }
 
   labels = var.labels
+
+  # Ensure IAM permissions are in place before creating the function
+  # The storage_viewer permission is required for Cloud Build to access the gcf-v2-sources bucket
+  depends_on = [
+    google_project_iam_member.storage_viewer,
+    google_project_iam_member.metrics_writer,
+    google_project_iam_member.secret_accessor,
+  ]
 }
 
 # Grant the service account permission to invoke the function
@@ -144,5 +152,63 @@ resource "google_cloud_scheduler_job" "metrics_trigger" {
   depends_on = [
     google_cloudfunctions2_function.metrics_function,
     google_cloud_run_service_iam_member.invoker
+  ]
+}
+
+# Invoke the metrics function once during deployment to create the custom metric.
+# This ensures the metric exists before the autoscaler is created, preventing
+# the autoscaler from being configured with an undefined metric reference.
+# We use "gcloud scheduler jobs run" which triggers the job using its configured
+# service account authentication, rather than trying to call the function directly.
+resource "null_resource" "initial_metrics_invocation" {
+  triggers = {
+    scheduler_job = google_cloud_scheduler_job.metrics_trigger.name
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "Waiting for Cloud Scheduler job to be ready..."
+      for i in {1..30}; do
+        if gcloud scheduler jobs describe "${google_cloud_scheduler_job.metrics_trigger.name}" \
+            --project="${var.project_id}" \
+            --location="${var.region}" \
+            --format="value(state)" 2>/dev/null | grep -q "ENABLED"; then
+          echo "Scheduler job is ready."
+          break
+        fi
+        echo "Waiting for scheduler job... (attempt $i/30)"
+        sleep 2
+      done
+
+      echo "Triggering metrics function via Cloud Scheduler to create initial metric..."
+      if gcloud scheduler jobs run "${google_cloud_scheduler_job.metrics_trigger.name}" \
+          --project="${var.project_id}" \
+          --location="${var.region}" 2>&1; then
+        echo "Scheduler job triggered successfully."
+      else
+        echo "Warning: Failed to trigger scheduler job. The autoscaler may need to be recreated after the first scheduled run."
+      fi
+
+      # Give the function time to execute and the metric time to propagate
+      echo "Waiting for metric to be created and propagate..."
+      METRIC_NAME="custom.googleapis.com/buildkite/${var.buildkite_organization_slug}/ScheduledJobsCount"
+      for i in {1..60}; do
+        if gcloud monitoring metrics-descriptors list \
+            --project="${var.project_id}" \
+            --filter="metric.type=\"$METRIC_NAME\"" \
+            --format="value(type)" 2>/dev/null | grep -q "custom.googleapis.com"; then
+          echo "Custom metric '$METRIC_NAME' has been created successfully."
+          exit 0
+        fi
+        echo "Waiting for metric to appear... (attempt $i/60, waiting up to 2 minutes)"
+        sleep 2
+      done
+    EOT
+  }
+
+  depends_on = [
+    google_cloudfunctions2_function.metrics_function,
+    google_cloud_run_service_iam_member.invoker,
+    google_cloud_scheduler_job.metrics_trigger
   ]
 }
