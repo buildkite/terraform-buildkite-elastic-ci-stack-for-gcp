@@ -191,7 +191,18 @@ resource "null_resource" "initial_metrics_invocation" {
 
       # Give the function time to execute and the metric time to propagate
       echo "Waiting for metric to be created and propagate..."
-      sleep 15
+      METRIC_NAME="custom.googleapis.com/buildkite/${var.buildkite_organization_slug}/ScheduledJobsCount"
+      for i in {1..60}; do
+        if gcloud monitoring metrics-descriptors list \
+            --project="${var.project_id}" \
+            --filter="metric.type=\"$METRIC_NAME\"" \
+            --format="value(type)" 2>/dev/null | grep -q "custom.googleapis.com"; then
+          echo "Custom metric '$METRIC_NAME' has been created successfully."
+          exit 0
+        fi
+        echo "Waiting for metric to appear... (attempt $i/60, waiting up to 2 minutes)"
+        sleep 2
+      done
     EOT
   }
 
