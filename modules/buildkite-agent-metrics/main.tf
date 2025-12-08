@@ -168,7 +168,17 @@ resource "null_resource" "initial_metrics_invocation" {
   provisioner "local-exec" {
     command = <<-EOT
       echo "Waiting for Cloud Scheduler job to be ready..."
-      sleep 5
+      for i in {1..30}; do
+        if gcloud scheduler jobs describe "${google_cloud_scheduler_job.metrics_trigger.name}" \
+            --project="${var.project_id}" \
+            --location="${var.region}" \
+            --format="value(state)" 2>/dev/null | grep -q "ENABLED"; then
+          echo "Scheduler job is ready."
+          break
+        fi
+        echo "Waiting for scheduler job... (attempt $i/30)"
+        sleep 2
+      done
 
       echo "Triggering metrics function via Cloud Scheduler to create initial metric..."
       if gcloud scheduler jobs run "${google_cloud_scheduler_job.metrics_trigger.name}" \
