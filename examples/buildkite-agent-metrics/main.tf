@@ -25,7 +25,7 @@ module "buildkite_metrics" {
   buildkite_agent_token_secret = var.buildkite_agent_token_secret
 
   # Optional: Monitor specific queues
-  buildkite_queue = var.buildkite_queue
+  buildkite_queue             = var.buildkite_queue
   buildkite_organization_slug = var.buildkite_organization_slug
 
   # Optional: Customize schedule (default is every minute)
