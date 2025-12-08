@@ -45,6 +45,11 @@ variable "buildkite_queue" {
   default     = ""
 }
 
+variable "buildkite_organization_slug" {
+  description = "The Buildkite organization slug used for metric naming"
+  type        = string
+}
+
 variable "function_name" {
   description = "Name of the Cloud Function"
   type        = string

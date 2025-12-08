@@ -36,6 +36,11 @@ variable "buildkite_queue" {
   default     = ""
 }
 
+variable "buildkite_organization_slug" {
+  description = "Buildkite organization slug (from your Buildkite URL: https://buildkite.com/<org-slug>)"
+  type        = string
+}
+
 variable "schedule_interval" {
   description = "Cron expression for Cloud Scheduler"
   type        = string

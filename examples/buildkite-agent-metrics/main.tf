@@ -26,6 +26,7 @@ module "buildkite_metrics" {
 
   # Optional: Monitor specific queues
   buildkite_queue = var.buildkite_queue
+  buildkite_organization_slug = var.buildkite_organization_slug
 
   # Optional: Customize schedule (default is every minute)
   schedule_interval = var.schedule_interval
