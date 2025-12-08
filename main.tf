@@ -8,8 +8,8 @@ locals {
   instance_tag               = var.instance_tag != null ? var.instance_tag : "${var.stack_name}-agent"
   agent_service_account_id   = var.agent_service_account_id != null ? var.agent_service_account_id : "${var.stack_name}-agent"
   metrics_service_account_id = var.metrics_service_account_id != null ? var.metrics_service_account_id : "${var.stack_name}-metrics"
-  agent_custom_role_id       = var.agent_custom_role_id != null ? var.agent_custom_role_id : "${var.stack_name}AgentInstanceMgmt"
-  metrics_custom_role_id     = var.metrics_custom_role_id != null ? var.metrics_custom_role_id : "${var.stack_name}MetricsAutoscaler"
+  agent_custom_role_id       = var.agent_custom_role_id != null ? var.agent_custom_role_id : "${replace(var.stack_name, "/[^a-zA-Z0-9_.]/", "")}AgentInstanceMgmt"
+  metrics_custom_role_id     = var.metrics_custom_role_id != null ? var.metrics_custom_role_id : "${replace(var.stack_name, "/[^a-zA-Z0-9_.]/", "")}MetricsAutoscaler"
   metrics_function_name      = "${var.stack_name}-metrics-function"
 }
 
