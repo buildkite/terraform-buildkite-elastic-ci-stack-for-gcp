@@ -66,7 +66,7 @@ variable "machine_type" {
 variable "image" {
   description = "Source image for boot disk (Buildkite CI Stack recommended)"
   type        = string
-  default     = "projects/buildkite-gcp-stack/global/images/buildkite-ci-stack-x86-64-2025-12-03-1035"
+  default     = "projects/buildkite-gcp-stack/global/images/buildkite-ci-stack-x86-64-2025-12-09-0554"
 }
 
 variable "root_disk_size_gb" {
