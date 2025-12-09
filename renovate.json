@@ -29,6 +29,17 @@
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "buildkite/agent",
       "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "description": "Update GCP Buildkite image references in Terraform variables",
+      "customType": "regex",
+      "fileMatch": ["^modules/compute/variables\\.tf$"],
+      "matchStrings": [
+        "default\\s*=\\s*\"projects/buildkite-gcp-stack/global/images/buildkite-ci-stack-x86-64-(?<currentValue>\\d{4}-\\d{2}-\\d{2}-\\d{4})\""
+      ],
+      "datasourceTemplate": "custom.buildkite-gcp-images",
+      "depNameTemplate": "buildkite-ci-stack-x86-64",
+      "versioningTemplate": "loose"
     }
   ]
 }
