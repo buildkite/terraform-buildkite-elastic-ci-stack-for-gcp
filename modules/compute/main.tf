@@ -1,6 +1,13 @@
 locals {
   # Check that at least one authentication method is provided
   has_auth = var.buildkite_agent_token != "" || var.buildkite_agent_token_secret != ""
+
+  # The buildkite-agent-metrics function converts hyphens to underscores in the
+  # organization slug when writing metrics (GCP custom metrics don't allow hyphens
+  # in the metric type path). We need to match this conversion in the autoscaler.
+  # See: https://github.com/buildkite/buildkite-agent-metrics/blob/main/backend/stackdriver.go
+  # Note: This uses Terraform's built-in replace() function, not a shell command.
+  metrics_org_slug = replace(var.buildkite_organization_slug, "-", "_")
 }
 
 resource "google_compute_instance_template" "buildkite_agent" {
@@ -137,8 +144,11 @@ resource "google_compute_region_autoscaler" "buildkite_agents" {
     # Note: Metrics are published by buildkite-agent-metrics to:
     # custom.googleapis.com/buildkite/<org-slug>/<MetricName>
     # The filter matches the Queue label to ensure we're scaling based on the correct queue.
+    #
+    # Important: The metrics function converts hyphens to underscores in the org slug
+    # (GCP custom metrics don't allow hyphens), so we use local.metrics_org_slug here.
     metric {
-      name   = "custom.googleapis.com/buildkite/${var.buildkite_organization_slug}/ScheduledJobsCount"
+      name   = "custom.googleapis.com/buildkite/${local.metrics_org_slug}/ScheduledJobsCount"
       target = var.autoscaling_jobs_per_instance
       type   = "GAUGE"
       filter = "resource.type = \"global\" AND metric.label.Queue = \"${var.buildkite_queue}\""
