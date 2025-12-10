@@ -109,9 +109,9 @@ variable "machine_type" {
 }
 
 variable "image" {
-  description = "Source image for boot disk. Use a custom Packer-built image or a public Debian image."
+  description = "Source image for boot disk. Use a custom Packer-built image or a public Buildkite image."
   type        = string
-  default     = "debian-cloud/debian-12"
+  default     = "projects/buildkite-gcp-stack/global/images/buildkite-ci-stack-x86-64-2025-12-09-0554"
 }
 
 variable "root_disk_size_gb" {
