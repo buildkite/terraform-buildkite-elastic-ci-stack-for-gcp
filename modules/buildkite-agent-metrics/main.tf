@@ -190,8 +190,11 @@ resource "null_resource" "initial_metrics_invocation" {
       fi
 
       # Give the function time to execute and the metric time to propagate
+      # Note: The metrics function converts hyphens to underscores in the org slug
+      # because GCP custom metrics don't allow hyphens in the metric type path.
       echo "Waiting for metric to be created and propagate..."
-      METRIC_NAME="custom.googleapis.com/buildkite/${var.buildkite_organization_slug}/ScheduledJobsCount"
+      ORG_SLUG_SANITIZED=$(echo "${var.buildkite_organization_slug}" | tr '-' '_')
+      METRIC_NAME="custom.googleapis.com/buildkite/$ORG_SLUG_SANITIZED/ScheduledJobsCount"
       for i in {1..60}; do
         if gcloud monitoring metrics-descriptors list \
             --project="${var.project_id}" \
