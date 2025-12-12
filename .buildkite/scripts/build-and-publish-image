@@ -4,7 +4,7 @@ set -euo pipefail
 # Build and publish a GCP VM image
 # Usage: ./build-and-publish-image <arch>
 
-ARCH=$1
+ARCH="${1:-x86-64}"
 PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
 BUILD_ZONE="${GCP_BUILD_ZONE:-us-central1-a}"
 BUILD_NUMBER="${BUILDKITE_BUILD_NUMBER:-local}"

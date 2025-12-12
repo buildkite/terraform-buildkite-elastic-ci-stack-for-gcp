@@ -46,18 +46,15 @@ resource "google_compute_instance_template" "buildkite_agent" {
   }
 
   metadata = {
-    enable-oslogin = "FALSE"
+    enable-oslogin           = "FALSE"
+    buildkite-token          = var.buildkite_agent_token
+    buildkite-token-secret   = var.buildkite_agent_token_secret
+    buildkite-queue          = var.buildkite_queue
+    buildkite-tags           = var.buildkite_agent_tags
+    buildkite-api-endpoint   = var.buildkite_api_endpoint
   }
 
-  metadata_startup_script = templatefile("${path.module}/templates/startup.sh", {
-    project_id                   = var.project_id
-    buildkite_agent_token        = var.buildkite_agent_token
-    buildkite_agent_token_secret = var.buildkite_agent_token_secret
-    buildkite_agent_release      = var.buildkite_agent_release
-    buildkite_queue              = var.buildkite_queue
-    buildkite_agent_tags         = var.buildkite_agent_tags
-    buildkite_api_endpoint       = var.buildkite_api_endpoint
-  })
+  metadata_startup_script = file("${path.module}/templates/startup.sh")
 
   lifecycle {
     create_before_destroy = true
