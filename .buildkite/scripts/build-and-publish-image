@@ -65,9 +65,4 @@ echo "Exporting image name for downstream steps"
 mkdir -p .buildkite
 echo "$IMAGE_NAME" > ".buildkite/${ARCH}-image-name.txt"
 
-# Set buildkite metadata if running in Buildkite
-if [[ -n "${BUILDKITE:-}" ]]; then
-  buildkite-agent meta-data set "${ARCH}-image-name" "$IMAGE_NAME"
-fi
-
 echo "--- :white_check_mark: Successfully built and published ${ARCH} image: $IMAGE_NAME"
