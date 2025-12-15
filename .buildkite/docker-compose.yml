@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ..:/workspace
-      - ~/.config/gcloud:/root/.config/gcloud:ro
+      - ~/.config/gcloud:/gcloud-creds:ro
     working_dir: /workspace
     environment:
       - GCP_PROJECT_ID
@@ -14,4 +14,4 @@ services:
       - BUILDKITE_COMMIT
       - BUILDKITE
       - CLOUDSDK_CONFIG=/tmp/gcloud
-      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcloud-creds/application_default_credentials.json
