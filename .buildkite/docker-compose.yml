@@ -13,3 +13,5 @@ services:
       - BUILDKITE_BUILD_NUMBER
       - BUILDKITE_COMMIT
       - BUILDKITE
+      - CLOUDSDK_CONFIG=/tmp/gcloud
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
