@@ -46,12 +46,12 @@ resource "google_compute_instance_template" "buildkite_agent" {
   }
 
   metadata = {
-    enable-oslogin           = "FALSE"
-    buildkite-token          = var.buildkite_agent_token
-    buildkite-token-secret   = var.buildkite_agent_token_secret
-    buildkite-queue          = var.buildkite_queue
-    buildkite-tags           = var.buildkite_agent_tags
-    buildkite-api-endpoint   = var.buildkite_api_endpoint
+    enable-oslogin         = "FALSE"
+    buildkite-token        = var.buildkite_agent_token
+    buildkite-token-secret = var.buildkite_agent_token_secret
+    buildkite-queue        = var.buildkite_queue
+    buildkite-tags         = var.buildkite_agent_tags
+    buildkite-api-endpoint = var.buildkite_api_endpoint
   }
 
   metadata_startup_script = file("${path.module}/templates/startup.sh")
