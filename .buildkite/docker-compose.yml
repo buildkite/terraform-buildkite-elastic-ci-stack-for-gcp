@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - ..:/workspace
       - ~/.config/gcloud:/gcloud-creds:ro
@@ -15,4 +14,5 @@ services:
       - BUILDKITE_COMMIT
       - BUILDKITE
       - CLOUDSDK_CONFIG=/tmp/gcloud
+      - CLOUDSDK_CORE_DISABLE_PROMPTS=1
       - GOOGLE_APPLICATION_CREDENTIALS=/gcloud-creds/application_default_credentials.json
