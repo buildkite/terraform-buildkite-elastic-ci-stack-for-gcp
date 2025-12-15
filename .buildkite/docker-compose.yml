@@ -13,6 +13,7 @@ services:
       - BUILDKITE_BUILD_NUMBER
       - BUILDKITE_COMMIT
       - BUILDKITE
+      - HOME=/tmp
       - CLOUDSDK_CONFIG=/tmp/gcloud
       - CLOUDSDK_CORE_DISABLE_PROMPTS=1
       - GOOGLE_APPLICATION_CREDENTIALS=/gcloud-creds/application_default_credentials.json
