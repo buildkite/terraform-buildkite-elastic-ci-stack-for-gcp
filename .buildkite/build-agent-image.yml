@@ -18,7 +18,7 @@ steps:
       queue: "gcp"
     artifact_paths:
       - "packer/linux/*.log"
-      - ".buildkite/{{matrix.arch}}-image-name.txt"
+      - "packer/.buildkite/*-image-name.txt"
     matrix:
       setup:
         arch:
