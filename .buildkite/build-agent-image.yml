@@ -23,4 +23,3 @@ steps:
       setup:
         arch:
           - x86-64
-          - arm64
