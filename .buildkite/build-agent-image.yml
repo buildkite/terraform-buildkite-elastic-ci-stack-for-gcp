@@ -13,7 +13,7 @@ steps:
           config: .buildkite/docker-compose.yml
           command: [".buildkite/scripts/build-and-publish-image", "{{matrix.arch}}"]
           propagate-gcp-auth-tokens: true
-          run-as-user: true
+          user: "999:988"
     agents:
       queue: "gcp"
     artifact_paths:
