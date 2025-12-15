@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    user: "${UID:-1000}:${GID:-1000}"
     volumes:
       - ..:/workspace
       - ~/.config/gcloud:/gcloud-creds:ro
