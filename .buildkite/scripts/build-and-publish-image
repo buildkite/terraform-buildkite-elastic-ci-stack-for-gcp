@@ -28,33 +28,20 @@ cd packer
 
 echo "--- :earth_americas: Making image public"
 
-# Get the actual image name that was created (format: buildkite-ci-stack-ARCH-YYYY-MM-DD-HHMM)
-# Look for images created in the last 5 minutes
-# Use portable date syntax that works on both macOS (BSD) and Linux (GNU)
-if date -v -5M &>/dev/null; then
-  # macOS/BSD date
-  FIVE_MIN_AGO=$(date -u -v -5M '+%Y-%m-%dT%H:%M:%S')
-else
-  # GNU date
-  FIVE_MIN_AGO=$(date -u -d '5 minutes ago' '+%Y-%m-%dT%H:%M:%S')
+# Get the image name from Packer's manifest file
+MANIFEST_FILE="linux/manifest.json"
+if [[ ! -f "$MANIFEST_FILE" ]]; then
+  echo "Error: Packer manifest file not found at $MANIFEST_FILE"
+  exit 1
 fi
 
-IMAGE_NAME=$(gcloud compute images list \
-  --project="$PROJECT_ID" \
-  --filter="name:buildkite-ci-stack-${ARCH} AND creationTimestamp>$FIVE_MIN_AGO" \
-  --format="value(name)" \
-  --sort-by="~creationTimestamp" \
-  --limit=1)
+# Extract image name from manifest (jq parses the JSON output from Packer)
+IMAGE_NAME=$(jq -r '.builds[-1].artifact_id' "$MANIFEST_FILE")
 
-if [[ -z "$IMAGE_NAME" ]]; then
-  echo "Error: Could not find newly created image for ${ARCH}"
-  echo "Searching for any recent buildkite-ci-stack-${ARCH} images:"
-  gcloud compute images list \
-    --project="$PROJECT_ID" \
-    --filter="name:buildkite-ci-stack-${ARCH}" \
-    --format="table(name,creationTimestamp)" \
-    --sort-by="~creationTimestamp" \
-    --limit=5
+if [[ -z "$IMAGE_NAME" || "$IMAGE_NAME" == "null" ]]; then
+  echo "Error: Could not extract image name from manifest"
+  echo "Manifest contents:"
+  cat "$MANIFEST_FILE"
   exit 1
 fi
 
