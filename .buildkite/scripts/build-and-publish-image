@@ -9,7 +9,7 @@ PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
 BUILD_ZONE="${GCP_BUILD_ZONE:-us-central1-a}"
 BUILD_NUMBER="${BUILDKITE_BUILD_NUMBER:-local}"
 COMMIT="${BUILDKITE_COMMIT:-unknown}"
-SERVICE_ACCOUNT="${GCP_PACKER_SERVICE_ACCOUNT:-packer-builder@${PROJECT_ID}.iam.gserviceaccount.com}"
+SERVICE_ACCOUNT="${GCP_PACKER_SERVICE_ACCOUNT:-gcp-image-builder-ci@${PROJECT_ID}.iam.gserviceaccount.com}"
 
 echo "--- :hammer: Building ${ARCH} image"
 echo "Project: ${PROJECT_ID}"
