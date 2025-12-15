@@ -9,11 +9,13 @@ PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
 BUILD_ZONE="${GCP_BUILD_ZONE:-us-central1-a}"
 BUILD_NUMBER="${BUILDKITE_BUILD_NUMBER:-local}"
 COMMIT="${BUILDKITE_COMMIT:-unknown}"
+SERVICE_ACCOUNT="${GCP_PACKER_SERVICE_ACCOUNT:-packer-builder@${PROJECT_ID}.iam.gserviceaccount.com}"
 
 echo "--- :hammer: Building ${ARCH} image"
 echo "Project: ${PROJECT_ID}"
 echo "Zone: ${BUILD_ZONE}"
 echo "Build: ${BUILD_NUMBER}-${COMMIT:0:7}"
+echo "Service Account: ${SERVICE_ACCOUNT}"
 
 # Change to packer directory and run build
 cd packer
@@ -21,7 +23,8 @@ cd packer
   --project-id "$PROJECT_ID" \
   --arch "$ARCH" \
   --build-number "${BUILD_NUMBER}-${COMMIT:0:7}" \
-  --zone "$BUILD_ZONE"
+  --zone "$BUILD_ZONE" \
+  --service-account "$SERVICE_ACCOUNT"
 
 echo "--- :earth_americas: Making image public"
 
