@@ -121,7 +121,7 @@ check_requirements() {
 validate_project() {
     log_info "Validating GCP project: $PROJECT_ID"
 
-    if ! gcloud projects describe "$PROJECT_ID" &> /dev/null; then
+    if ! gcloud projects describe "$PROJECT_ID"; then
         log_error "Project '$PROJECT_ID' not found or not accessible."
         log_info "Please check the project ID and your permissions."
         exit 1
