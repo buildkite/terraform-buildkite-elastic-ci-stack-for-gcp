@@ -1,0 +1,19 @@
+services:
+  packer-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace
+      - ~/.config/gcloud:/gcloud-creds:ro
+    working_dir: /workspace
+    environment:
+      - GCP_PROJECT_ID
+      - GCP_BUILD_ZONE
+      - BUILDKITE_BUILD_NUMBER
+      - BUILDKITE_COMMIT
+      - BUILDKITE
+      - HOME=/tmp
+      - CLOUDSDK_CONFIG=/tmp/gcloud
+      - CLOUDSDK_CORE_DISABLE_PROMPTS=1
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcloud-creds/application_default_credentials.json

@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Bootstrap script for Buildkite agent VM instances
+# This script configures and starts the Buildkite agent on first boot
+# It is installed to /usr/local/bin/bootstrap-buildkite-agent during image build
+
+echo "Starting Buildkite agent configuration..."
+
+# Get metadata values from GCP instance metadata
+get_metadata() {
+    local key="$1"
+    local default="${2:-}"
+    curl -s -f -H "Metadata-Flavor: Google" \
+        "http://metadata.google.internal/computeMetadata/v1/instance/attributes/$key" 2>/dev/null || echo "$default"
+}
+
+# Get Buildkite agent token - either directly or from Secret Manager
+BUILDKITE_TOKEN=$(get_metadata "buildkite-token")
+BUILDKITE_TOKEN_SECRET=$(get_metadata "buildkite-token-secret")
+
+if [[ -n "$BUILDKITE_TOKEN_SECRET" ]]; then
+    echo "Fetching Buildkite agent token from Secret Manager..."
+    # Get project ID for Secret Manager
+    PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/project/project-id")
+    BUILDKITE_TOKEN=$(gcloud secrets versions access latest --secret="$BUILDKITE_TOKEN_SECRET" --project="$PROJECT_ID")
+fi
+
+if [[ -z "$BUILDKITE_TOKEN" ]]; then
+    echo "ERROR: Buildkite agent token not found"
+    echo "Please set either buildkite-token or buildkite-token-secret in instance metadata"
+    exit 1
+fi
+
+# Optional configuration from instance metadata
+BUILDKITE_AGENT_NAME=$(get_metadata "buildkite-agent-name" "$(hostname)")
+BUILDKITE_QUEUE=$(get_metadata "buildkite-queue" "default")
+BUILDKITE_PRIORITY=$(get_metadata "buildkite-priority" "1")
+BUILDKITE_TAGS=$(get_metadata "buildkite-tags" "")
+BUILDKITE_API_ENDPOINT=$(get_metadata "buildkite-api-endpoint" "")
+
+# GCP context (for tags)
+PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/project/project-id")
+ZONE=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/zone" | cut -d'/' -f4)
+INSTANCE_NAME=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/name")
+
+# Export variables for envsubst
+export BUILDKITE_TOKEN
+export BUILDKITE_AGENT_NAME
+export BUILDKITE_QUEUE
+export BUILDKITE_PRIORITY
+export BUILDKITE_TAGS
+export BUILDKITE_API_ENDPOINT
+export PROJECT_ID
+export ZONE
+export INSTANCE_NAME
+
+echo "Configuring Buildkite agent with:"
+echo "  Name: $BUILDKITE_AGENT_NAME"
+echo "  Queue: $BUILDKITE_QUEUE"
+echo "  Priority: $BUILDKITE_PRIORITY"
+echo "  Tags: $BUILDKITE_TAGS"
+echo "  API Endpoint: ${BUILDKITE_API_ENDPOINT:-default}"
+echo "  GCP Project: $PROJECT_ID"
+echo "  GCP Zone: $ZONE"
+echo "  Instance: $INSTANCE_NAME"
+
+# Generate configuration from templates
+echo "Generating configuration from templates..."
+
+envsubst < /etc/buildkite-agent/templates/buildkite-agent.cfg.template \
+  | sudo tee /etc/buildkite-agent/buildkite-agent.cfg > /dev/null
+
+# Add API endpoint if specified
+if [[ -n "$BUILDKITE_API_ENDPOINT" ]]; then
+    echo "endpoint=\"$BUILDKITE_API_ENDPOINT\"" | sudo tee -a /etc/buildkite-agent/buildkite-agent.cfg > /dev/null
+fi
+
+sudo chown buildkite-agent:buildkite-agent /etc/buildkite-agent/buildkite-agent.cfg
+sudo chmod 640 /etc/buildkite-agent/buildkite-agent.cfg
+
+# Generate environment file
+envsubst < /etc/buildkite-agent/templates/buildkite-agent-env.template \
+  | sudo tee /etc/buildkite-agent/env > /dev/null
+
+sudo chown buildkite-agent:buildkite-agent /etc/buildkite-agent/env
+sudo chmod 640 /etc/buildkite-agent/env
+
+# Fix permissions for buildkite agent directories
+if [ -x /usr/bin/fix-buildkite-agent-builds-permissions ]; then
+  sudo /usr/bin/fix-buildkite-agent-builds-permissions
+fi
+
+# Enable and start the buildkite-agent service
+echo "Starting Buildkite agent service..."
+sudo systemctl daemon-reload
+sudo systemctl enable buildkite-agent
+sudo systemctl start buildkite-agent
+
+# Enable and start preemption monitoring if available
+if systemctl list-unit-files | grep -q preemption-monitor; then
+  sudo systemctl enable preemption-monitor
+  sudo systemctl start preemption-monitor
+fi
+
+# Wait a moment for the service to start
+sleep 5
+
+# Check if the service started successfully
+if sudo systemctl is-active --quiet buildkite-agent; then
+    echo "✅ Buildkite agent started successfully"
+    sudo systemctl status buildkite-agent --no-pager -l
+else
+    echo "❌ Failed to start Buildkite agent"
+    sudo systemctl status buildkite-agent --no-pager -l
+    sudo journalctl -u buildkite-agent --no-pager -n 20
+    exit 1
+fi
+
+echo "🎉 Buildkite agent configuration complete!"

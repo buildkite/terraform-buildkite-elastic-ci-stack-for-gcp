@@ -78,10 +78,15 @@ check_requirements() {
     fi
 
     # Check if authenticated with gcloud
-    if ! gcloud auth application-default print-access-token &> /dev/null; then
-        log_error "GCP authentication not found."
-        log_info "Please run: gcloud auth application-default login"
-        exit 1
+    # Skip check if running in CI with credentials from workload identity federation
+    if [[ -z "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]] && [[ -z "${CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE:-}" ]]; then
+        if ! gcloud auth application-default print-access-token &> /dev/null; then
+            log_error "GCP authentication not found."
+            log_info "Please run: gcloud auth application-default login"
+            exit 1
+        fi
+    else
+        log_info "Using GCP credentials from application credentials file"
     fi
 
     # Check if required directories exist
@@ -116,7 +121,7 @@ check_requirements() {
 validate_project() {
     log_info "Validating GCP project: $PROJECT_ID"
 
-    if ! gcloud projects describe "$PROJECT_ID" &> /dev/null; then
+    if ! gcloud projects describe "$PROJECT_ID"; then
         log_error "Project '$PROJECT_ID' not found or not accessible."
         log_info "Please check the project ID and your permissions."
         exit 1
@@ -127,50 +132,24 @@ validate_project() {
 
 check_service_account() {
     if [[ -n "$SERVICE_ACCOUNT_EMAIL" ]]; then
-        log_info "Validating service account: $SERVICE_ACCOUNT_EMAIL"
-        if ! gcloud iam service-accounts describe "$SERVICE_ACCOUNT_EMAIL" --project="$PROJECT_ID" &> /dev/null; then
-            log_error "Service account '$SERVICE_ACCOUNT_EMAIL' not found."
-            log_info "Please create the service account or use a different one."
-            exit 1
-        fi
-        log_info "Service account validation passed."
-    else
-        log_info "No service account specified, checking for default Compute Engine service account..."
-
-        local default_sa="${PROJECT_ID//-/}@${PROJECT_ID}.iam.gserviceaccount.com"
-        local compute_sa="$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)" 2>/dev/null)-compute@developer.gserviceaccount.com"
-
-        if gcloud iam service-accounts describe "$compute_sa" --project="$PROJECT_ID" &> /dev/null; then
-            log_info "Default Compute Engine service account found."
+        log_info "Using service account: $SERVICE_ACCOUNT_EMAIL"
+        
+        # Skip validation in CI - workload identity federation proves the SA exists
+        # The gcloud iam service-accounts describe command requires iam.serviceAccounts.get
+        # permission which the CI service account may not have on itself
+        if [[ -n "${BUILDKITE:-}" ]] || [[ -n "${CI:-}" ]]; then
+            log_info "Running in CI, skipping service account validation (authentication proves it exists)"
         else
-            log_warn "Default Compute Engine service account not found."
-            log_info "Creating a service account for Packer builds..."
-
-            local sa_name="packer-builder"
-            local sa_email="${sa_name}@${PROJECT_ID}.iam.gserviceaccount.com"
-
-            if ! gcloud iam service-accounts describe "$sa_email" --project="$PROJECT_ID" &> /dev/null; then
-                gcloud iam service-accounts create "$sa_name" \
-                    --project="$PROJECT_ID" \
-                    --display-name="Packer Builder" \
-                    --description="Service account for Packer image builds"
-
-                # Grant necessary permissions
-                gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-                    --member="serviceAccount:$sa_email" \
-                    --role="roles/compute.instanceAdmin.v1" \
-                    --quiet
-
-                gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-                    --member="serviceAccount:$sa_email" \
-                    --role="roles/iam.serviceAccountUser" \
-                    --quiet
-
-                log_info "Created service account: $sa_email"
+            # Local validation - user likely has broader permissions
+            if ! gcloud iam service-accounts describe "$SERVICE_ACCOUNT_EMAIL" --project="$PROJECT_ID" &> /dev/null; then
+                log_warn "Could not validate service account '$SERVICE_ACCOUNT_EMAIL'."
+                log_info "This may be a permissions issue. Proceeding anyway..."
+            else
+                log_info "Service account validation passed."
             fi
-
-            SERVICE_ACCOUNT_EMAIL="$sa_email"
         fi
+    else
+        log_info "No service account specified, Packer will use the default Compute Engine service account."
     fi
 }
 

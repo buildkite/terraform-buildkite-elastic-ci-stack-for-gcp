@@ -112,6 +112,11 @@ source "googlecompute" "buildkite-ci-stack" {
 build {
   sources = ["source.googlecompute.buildkite-ci-stack"]
 
+  post-processor "manifest" {
+    output     = "manifest.json"
+    strip_path = true
+  }
+
   provisioner "file" {
     destination = "/tmp"
     source      = "conf"
