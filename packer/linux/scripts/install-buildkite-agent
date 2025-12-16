@@ -5,97 +5,89 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
 
-case $(uname -m) in
-x86_64) ARCH=amd64 ;;
-aarch64) ARCH=arm64 ;;
-*) ARCH=unknown ;;
-esac
+echo "Installing Buildkite agent via apt..."
 
-echo "Creating buildkite-agent user and group..."
-sudo useradd --base-dir /var/lib --uid 2000 --create-home --shell /bin/bash buildkite-agent || true
+# Install dependencies
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl gnupg gettext-base
 
-AGENT_VERSION=3.115.1
-echo "Downloading buildkite-agent v${AGENT_VERSION} stable..."
-sudo curl -Lsf -o /usr/bin/buildkite-agent-stable \
-  "https://download.buildkite.com/agent/stable/${AGENT_VERSION}/buildkite-agent-linux-${ARCH}"
-sudo chmod +x /usr/bin/buildkite-agent-stable
-buildkite-agent-stable --version
+# Add Buildkite apt repository
+echo "Adding Buildkite agent repository..."
+curl -fsSL "https://keys.openpgp.org/vks/v1/by-fingerprint/32A37959C2FA5C3C99EFBC32A79206696452D198" \
+  | sudo gpg --dearmor -o /usr/share/keyrings/buildkite-agent-archive-keyring.gpg
 
-echo "Downloading buildkite-agent beta..."
-sudo curl -Lsf -o /usr/bin/buildkite-agent-beta \
-  "https://download.buildkite.com/agent/unstable/latest/buildkite-agent-linux-${ARCH}"
-sudo chmod +x /usr/bin/buildkite-agent-beta
-buildkite-agent-beta --version
+echo "deb [signed-by=/usr/share/keyrings/buildkite-agent-archive-keyring.gpg] https://apt.buildkite.com/buildkite-agent stable main" \
+  | sudo tee /etc/apt/sources.list.d/buildkite-agent.list
 
-echo "Adding scripts..."
-sudo mkdir -p /tmp/conf/buildkite-agent/scripts
-if [ -d /tmp/conf/buildkite-agent/scripts ]; then
-  sudo cp /tmp/conf/buildkite-agent/scripts/* /usr/bin/ || echo "No scripts to copy"
-fi
+sudo apt-get update
 
-echo "Adding sudoers config..."
-if [ -f /tmp/conf/buildkite-agent/sudoers.conf ]; then
-  sudo cp /tmp/conf/buildkite-agent/sudoers.conf /etc/sudoers.d/buildkite-agent
-  sudo chmod 440 /etc/sudoers.d/buildkite-agent
-else
-  echo "Creating default sudoers config for buildkite-agent..."
-  echo "buildkite-agent ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/buildkite-agent
-  sudo chmod 440 /etc/sudoers.d/buildkite-agent
-fi
+# Install buildkite-agent package
+echo "Installing buildkite-agent package..."
+sudo apt-get install -y buildkite-agent
 
-echo "Creating hooks dir..."
+# Verify installation
+buildkite-agent --version
+
+# The apt package creates the buildkite-agent user and directories, but let's ensure
+# our expected directory structure exists
+echo "Ensuring directory structure..."
 sudo mkdir -p /etc/buildkite-agent/hooks
-sudo chown -R buildkite-agent: /etc/buildkite-agent/hooks
+sudo mkdir -p /etc/buildkite-agent/templates
+sudo mkdir -p /var/lib/buildkite-agent/builds
+sudo mkdir -p /var/lib/buildkite-agent/git-mirrors
+sudo mkdir -p /var/lib/buildkite-agent/plugins
 
+# Install configuration templates to persistent location
+echo "Installing configuration templates..."
+sudo cp /tmp/templates/config/buildkite-agent.cfg.template /etc/buildkite-agent/templates/
+sudo cp /tmp/templates/config/buildkite-agent-env.template /etc/buildkite-agent/templates/
+
+# Install bootstrap script
+echo "Installing bootstrap script..."
+sudo cp /tmp/templates/scripts/bootstrap-buildkite-agent /usr/local/bin/bootstrap-buildkite-agent
+sudo chmod +x /usr/local/bin/bootstrap-buildkite-agent
+
+# Set ownership
+sudo chown -R buildkite-agent:buildkite-agent /etc/buildkite-agent
+sudo chown -R buildkite-agent:buildkite-agent /var/lib/buildkite-agent
+
+# Copy custom hooks if present
 echo "Copying custom hooks..."
 if [ -d /tmp/conf/buildkite-agent/hooks ]; then
   sudo cp -a /tmp/conf/buildkite-agent/hooks/* /etc/buildkite-agent/hooks/ || echo "No hooks to copy"
   sudo chmod +x /etc/buildkite-agent/hooks/* || true
-  sudo chown -R buildkite-agent: /etc/buildkite-agent/hooks
+  sudo chown -R buildkite-agent:buildkite-agent /etc/buildkite-agent/hooks
 fi
 
-echo "Creating builds dir..."
-sudo mkdir -p /var/lib/buildkite-agent/builds
-sudo chown -R buildkite-agent: /var/lib/buildkite-agent/builds
+# Install sudoers config
+echo "Adding sudoers config..."
+if [ -f /tmp/conf/buildkite-agent/sudoers.conf ]; then
+  sudo cp /tmp/conf/buildkite-agent/sudoers.conf /etc/sudoers.d/buildkite-agent
+else
+  echo "buildkite-agent ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/buildkite-agent
+fi
+sudo chmod 440 /etc/sudoers.d/buildkite-agent
 
-echo "Creating git-mirrors dir..."
-sudo mkdir -p /var/lib/buildkite-agent/git-mirrors
-sudo chown -R buildkite-agent: /var/lib/buildkite-agent/git-mirrors
-
-echo "Creating plugins dir..."
-sudo mkdir -p /var/lib/buildkite-agent/plugins
-sudo chown -R buildkite-agent: /var/lib/buildkite-agent/plugins
-
-echo "Adding systemd service template..."
-sudo mkdir -p /etc/systemd/system
+# Install custom systemd service (overrides the apt package default)
+echo "Installing systemd service..."
 if [ -f /tmp/conf/buildkite-agent/systemd/buildkite-agent.service ]; then
   sudo cp /tmp/conf/buildkite-agent/systemd/buildkite-agent.service /etc/systemd/system/buildkite-agent.service
-else
-  echo "ERROR: buildkite-agent.service not found in conf directory"
-  exit 1
 fi
 
-echo "Adding termination scripts..."
+# Install termination scripts
+echo "Installing termination scripts..."
 sudo mkdir -p /usr/local/bin
 if [ -f /tmp/conf/buildkite-agent/scripts/stop-agent-gracefully ]; then
   sudo cp /tmp/conf/buildkite-agent/scripts/stop-agent-gracefully /usr/local/bin/stop-agent-gracefully
-else
-  echo "ERROR: stop-agent-gracefully script not found in conf directory"
-  exit 1
+  sudo chmod +x /usr/local/bin/stop-agent-gracefully
 fi
 
 if [ -f /tmp/conf/buildkite-agent/scripts/terminate-instance ]; then
   sudo cp /tmp/conf/buildkite-agent/scripts/terminate-instance /usr/local/bin/terminate-instance
-else
-  echo "ERROR: terminate-instance script not found in conf directory"
-  exit 1
+  sudo chmod +x /usr/local/bin/terminate-instance
 fi
 
-echo "Copying built-in plugins..."
-if [ -d /tmp/plugins ]; then
-  sudo mkdir -p /usr/local/buildkite-gcp-stack/plugins
-  sudo cp -a /tmp/plugins/* /usr/local/buildkite-gcp-stack/plugins/ || echo "No plugins to copy"
-  sudo chown -R buildkite-agent: /usr/local/buildkite-gcp-stack || true
-fi
+# Don't enable or start the service - that happens at VM boot via bootstrap
+sudo systemctl daemon-reload
 
 echo "Buildkite agent installation complete."
