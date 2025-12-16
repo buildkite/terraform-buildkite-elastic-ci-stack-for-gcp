@@ -194,18 +194,31 @@ resource "null_resource" "initial_metrics_invocation" {
       # because GCP custom metrics don't allow hyphens in the metric type path.
       echo "Waiting for metric to be created and propagate..."
       ORG_SLUG_SANITIZED=$(echo "${var.buildkite_organization_slug}" | tr '-' '_')
-      METRIC_NAME="custom.googleapis.com/buildkite/$ORG_SLUG_SANITIZED/ScheduledJobsCount"
+      METRIC_TYPE="custom.googleapis.com/buildkite/$ORG_SLUG_SANITIZED/ScheduledJobsCount"
+      PROJECT_ID="${var.project_id}"
+      FILTER="metric.type = \"$METRIC_TYPE\""
+
+      # Use the Cloud Monitoring API directly to check for the metric descriptor
+      # The gcloud CLI doesn't have a metrics-descriptors command, so we use curl with the REST API
+      # We use the list endpoint with a filter since the GET endpoint has URL encoding issues
       for i in {1..60}; do
-        if gcloud monitoring metrics-descriptors list \
-            --project="${var.project_id}" \
-            --filter="metric.type=\"$METRIC_NAME\"" \
-            --format="value(type)" 2>/dev/null | grep -q "custom.googleapis.com"; then
-          echo "Custom metric '$METRIC_NAME' has been created successfully."
-          exit 0
+        ACCESS_TOKEN=$(gcloud auth print-access-token 2>/dev/null)
+        if [ -n "$ACCESS_TOKEN" ]; then
+          RESPONSE=$(curl -s -G \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            "https://monitoring.googleapis.com/v3/projects/$PROJECT_ID/metricDescriptors" \
+            --data-urlencode "filter=$FILTER")
+          if echo "$RESPONSE" | grep -q "\"type\": \"$METRIC_TYPE\""; then
+            echo "Custom metric '$METRIC_TYPE' has been created successfully."
+            exit 0
+          fi
         fi
         echo "Waiting for metric to appear... (attempt $i/60, waiting up to 2 minutes)"
         sleep 2
       done
+
+      echo "Warning: Metric verification timed out. The metric may still be propagating."
+      echo "The autoscaler may need a few minutes before it can use the metric."
     EOT
   }
 
