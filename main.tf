@@ -117,4 +117,8 @@ module "buildkite_metrics" {
   service_account_email        = module.iam.metrics_service_account_email
 
   labels = var.labels
+
+  # Ensure IAM permissions (especially storage.objectViewer for gcf-v2-sources bucket)
+  # are fully applied before creating the Cloud Function
+  depends_on = [module.iam]
 }
