@@ -134,9 +134,11 @@ resource "google_compute_region_autoscaler" "buildkite_agents" {
     max_replicas    = var.max_size
     cooldown_period = var.cooldown_period
 
-    # Using scheduled jobs as the primary scaling metric
+    # Using UnfinishedJobsCount as the primary scaling metric.
+    # UnfinishedJobsCount = Scheduled + Running + Waiting jobs
+    #
     # The autoscaler will scale to: ceil(metric_value / target)
-    # If ScheduledJobsCount = 13 and target = 1, we get 13 instances
+    # If UnfinishedJobsCount = 13 and target = 1, we get 13 instances
     # 
     # Note: Metrics are published by buildkite-agent-metrics to:
     # custom.googleapis.com/buildkite/<org-slug>/<MetricName>
@@ -145,7 +147,7 @@ resource "google_compute_region_autoscaler" "buildkite_agents" {
     # Important: The metrics function converts hyphens to underscores in the org slug
     # (GCP custom metrics don't allow hyphens), so we use local.metrics_org_slug here.
     metric {
-      name   = "custom.googleapis.com/buildkite/${local.metrics_org_slug}/ScheduledJobsCount"
+      name   = "custom.googleapis.com/buildkite/${local.metrics_org_slug}/UnfinishedJobsCount"
       target = var.autoscaling_jobs_per_instance
       type   = "GAUGE"
       filter = "resource.type = \"global\" AND metric.label.Queue = \"${var.buildkite_queue}\""
