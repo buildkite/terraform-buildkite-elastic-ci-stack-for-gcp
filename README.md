@@ -6,7 +6,7 @@ Terraform modules for running autoscaling [Buildkite](https://buildkite.com/) ag
 
 ## Documentation
 
-Full documentation is available at [https://buildkite.com/docs/agent/v3/gcp/elastic-ci-stack](https://buildkite.com/docs/agent/v3/gcp/elastic-ci-stack).
+Full documentation is available at <https://buildkite.com/docs/agent/v3/gcp/elastic-ci-stack/elastic-ci-stack>.
 
 ## Getting Started
 
