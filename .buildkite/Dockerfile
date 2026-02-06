@@ -1,5 +1,5 @@
 # Custom Docker image with both Packer and gcloud CLI for building GCP VM images
-FROM hashicorp/packer:1.14
+FROM hashicorp/packer:1.15
 
 # Install dependencies for gcloud CLI
 RUN apk add --no-cache \
