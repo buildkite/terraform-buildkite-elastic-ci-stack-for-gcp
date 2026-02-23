@@ -94,7 +94,7 @@ resource "google_cloudfunctions2_function" "metrics_function" {
         BUILDKITE_AGENT_TOKENS = var.buildkite_agent_token
       } : {},
       local.use_secret_manager ? {
-        BUILDKITE_AGENT_TOKEN_SECRET_NAMES = "projects/${var.project_id}/secrets/${var.buildkite_agent_token_secret}/versions/latest"
+        BUILDKITE_AGENT_TOKEN_SECRET_NAMES = var.buildkite_agent_token_secret
       } : {},
       var.buildkite_queue != "" ? {
         BUILDKITE_QUEUE = var.buildkite_queue

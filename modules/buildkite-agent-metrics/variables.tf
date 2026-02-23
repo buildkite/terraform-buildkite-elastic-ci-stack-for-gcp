@@ -26,16 +26,16 @@ variable "buildkite_agent_token" {
 }
 
 variable "buildkite_agent_token_secret" {
-  description = "Name of the Google Secret Manager secret containing the Buildkite agent token (recommended for production)"
+  description = "Full GCP Secret Manager resource name containing the Buildkite agent token (e.g., 'projects/PROJECT_ID/secrets/buildkite-agent-token/versions/latest'). Recommended for production."
   type        = string
   default     = ""
 
   validation {
     condition = (
       var.buildkite_agent_token_secret == "" ||
-      can(regex("^[a-zA-Z0-9_-]+$", var.buildkite_agent_token_secret))
+      can(regex("^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/secrets/[a-zA-Z0-9_-]+/versions/.+$", var.buildkite_agent_token_secret))
     )
-    error_message = "Secret name must contain only uppercase and lowercase letters, numerals, hyphens, and underscores."
+    error_message = "Secret must be a full GCP Secret Manager resource name (e.g., 'projects/PROJECT_ID/secrets/SECRET_NAME/versions/latest')."
   }
 }
 

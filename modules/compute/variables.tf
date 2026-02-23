@@ -103,7 +103,7 @@ variable "buildkite_agent_token" {
 }
 
 variable "buildkite_agent_token_secret" {
-  description = "GCP Secret Manager secret name containing Buildkite agent token (e.g. 'projects/PROJECT_ID/secrets/buildkite-agent-token/versions/latest')"
+  description = "Full GCP Secret Manager resource name containing the Buildkite agent token (e.g., 'projects/PROJECT_ID/secrets/buildkite-agent-token/versions/latest')"
   type        = string
   default     = ""
 }
