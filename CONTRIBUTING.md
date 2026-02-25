@@ -200,10 +200,9 @@ terraform destroy -auto-approve
 Releases are managed by maintainers. The process includes:
 
 1. Version bump in relevant files
-2. Update CHANGELOG.md with release notes
-3. Create GitHub release with notes
-4. Tag the release (semantic versioning: v0.1.0, v0.2.0, etc.)
-5. Update examples to reference new version
+2. Create GitHub release with notes
+3. Tag the release (semantic versioning: v0.1.0, v0.2.0, etc.)
+4. Update examples to reference new version
 
 ## CI/CD Pipeline
 
