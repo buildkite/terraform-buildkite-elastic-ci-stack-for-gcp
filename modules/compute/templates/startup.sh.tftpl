@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Startup script for Buildkite agent VM instances
+# This script is run via Terraform's metadata_startup_script
+#
+# The image already has:
+# - buildkite-agent installed via apt
+# - Configuration templates at /etc/buildkite-agent/templates/
+# - Bootstrap script at /usr/local/bin/bootstrap-buildkite-agent
+#
+# We install the bootstrap script from the Terraform module to ensure it
+# always matches the module version, regardless of what was baked into the
+# machine image. This prevents version skew between the module and image.
+
+echo "Installing Buildkite agent bootstrap script..."
+
+cat > /usr/local/bin/bootstrap-buildkite-agent << 'BOOTSTRAP_SCRIPT_EOF'
+${bootstrap_script}
+BOOTSTRAP_SCRIPT_EOF
+chmod +x /usr/local/bin/bootstrap-buildkite-agent
+
+echo "Running Buildkite agent bootstrap..."
+exec /usr/local/bin/bootstrap-buildkite-agent
