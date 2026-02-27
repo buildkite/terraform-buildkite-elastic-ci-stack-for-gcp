@@ -21,12 +21,9 @@ BUILDKITE_TOKEN_SECRET=$(get_metadata "buildkite-token-secret")
 
 if [[ -n "$BUILDKITE_TOKEN_SECRET" ]]; then
     echo "Fetching Buildkite agent token from Secret Manager..."
-    # Get project ID for Secret Manager
-    PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/project/project-id")
-    # Extract just the secret name from the full resource path
-    # e.g., "projects/my-project/secrets/my-secret/versions/latest" -> "my-secret"
-    SECRET_NAME=$(echo "$BUILDKITE_TOKEN_SECRET" | cut -d'/' -f4)
-    BUILDKITE_TOKEN=$(gcloud secrets versions access latest --secret="$SECRET_NAME" --project="$PROJECT_ID")
+    # Use the full resource name directly as the positional argument to gcloud
+    # e.g., "projects/my-project/secrets/my-secret/versions/latest"
+    BUILDKITE_TOKEN=$(gcloud secrets versions access "$BUILDKITE_TOKEN_SECRET")
 fi
 
 if [[ -z "$BUILDKITE_TOKEN" ]]; then

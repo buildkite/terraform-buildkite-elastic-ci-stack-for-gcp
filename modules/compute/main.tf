@@ -54,7 +54,9 @@ resource "google_compute_instance_template" "buildkite_agent" {
     buildkite-api-endpoint = var.buildkite_api_endpoint
   }
 
-  metadata_startup_script = file("${path.module}/templates/startup.sh")
+  metadata_startup_script = templatefile("${path.module}/templates/startup.sh.tftpl", {
+    bootstrap_script = file("${path.module}/../../templates/scripts/bootstrap-buildkite-agent")
+  })
 
   lifecycle {
     create_before_destroy = true
