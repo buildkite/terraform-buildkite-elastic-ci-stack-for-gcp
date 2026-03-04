@@ -33,8 +33,8 @@ export BUILDKITE_GCP_MACHINE_TYPE=$(gcp-metadata machine-type 2>/dev/null || ech
 echo "Checking GCP Secret Manager for SSH keys..."
 
 SSH_KEY_NAMES=(
-  "${BUILDKITE_PIPELINE_SLUG}/private_ssh_key"
-  "${BUILDKITE_PIPELINE_SLUG}/id_rsa_github"
+  "${BUILDKITE_PIPELINE_SLUG}_private_ssh_key"
+  "${BUILDKITE_PIPELINE_SLUG}_id_rsa_github"
   "private_ssh_key"
   "id_rsa_github"
 )
