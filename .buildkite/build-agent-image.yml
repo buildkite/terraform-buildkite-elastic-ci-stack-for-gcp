@@ -1,17 +1,170 @@
+definitions:
+  terraform_docker: &terraform_docker
+    docker#v5.14.0:
+      image: "hashicorp/terraform:1.13"
+      workdir: "/workdir"
+      entrypoint: "/bin/sh"
+  tflint: &tflint
+    docker#v5.14.0:
+      image: "ghcr.io/terraform-linters/tflint:v0.59.1"
+      workdir: "/workdir"
+      entrypoint: "/bin/sh"
+  tfsec: &tfsec
+    docker#v5.14.0:
+      image: "aquasec/tfsec:v1.28"
+      workdir: "/workdir"
+      entrypoint: "/bin/sh"
+  packer: &packer
+    docker#v5.14.0:
+      image: "hashicorp/packer:1.11"
+      workdir: "/workdir"
+      entrypoint: "/bin/sh"
+  shellcheck: &shellcheck
+    shellcheck#v1.4.0:
+      files:
+        - ".buildkite/scripts/*"
+        - "packer/build"
+        - "packer/linux/scripts/*"
+        - "templates/scripts/*"
+        - "packer/linux/conf/buildkite-agent/hooks/*"
+        - "packer/linux/conf/buildkite-agent/scripts/*"
+        - "packer/linux/conf/docker/scripts/*"
+
 env:
   GCP_PROJECT_ID: "buildkite-gcp-stack"
   GCP_BUILD_ZONE: "us-central1-a"
 
+# Automatic webhook builds only receive image-builder credentials on main.
+# Trusted maintainers can still validate a branch by triggering this private
+# pipeline manually or through the Buildkite API.
+x-trusted-image-build: &trusted_image_build build.branch == "main" || build.source == "ui" || build.source == "api"
+x-main-only: &main_only build.branch == "main"
+
+x-if-changed-patterns:
+  - &if_changed_image
+    include:
+      - "packer/**"
+      - "templates/**"
+      - "goss.yaml"
+      - ".buildkite/Dockerfile"
+      - ".buildkite/docker-compose.yml"
+      - ".buildkite/build-agent-image.yml"
+      - ".buildkite/scripts/build-image"
+      - ".buildkite/scripts/delete-packer-resources"
+      - ".buildkite/scripts/launch-test-instance"
+      - ".buildkite/scripts/publish-image"
+      - ".buildkite/scripts/delete-test-instance"
+    exclude:
+      - "**/*.md"
+      - "**/README*"
+
+dag: true
+
 steps:
-  - label: ":hammer: Build {{matrix.arch}} Image"
+  #
+  # Verification
+  #
+  - group: ":terraform: Root Modules"
+    key: terraform-checks
+    steps:
+      - label: ":terraform: Format Check"
+        key: terraform-fmt
+        if_changed: "**/*.tf"
+        command: .buildkite/scripts/format_check
+        plugins:
+          - *terraform_docker
+        agents:
+          queue: "gcp"
+
+      - label: ":terraform: Validate Modules"
+        key: terraform-validate-modules
+        if_changed:
+          - "**/*.tf"
+          - "**/*.tfvars"
+        command: .buildkite/scripts/validate
+        plugins:
+          - *terraform_docker
+        agents:
+          queue: "gcp"
+
+      - label: ":lint-roller: TFLint"
+        key: tflint
+        if_changed: "**/*.tf"
+        command: .buildkite/scripts/tflint
+        plugins:
+          - *tflint
+        agents:
+          queue: "gcp"
+
+      - label: ":shield: TFSec Security Scan"
+        key: tfsec
+        if_changed: "**/*.tf"
+        command: .buildkite/scripts/tfsec
+        plugins:
+          - *tfsec
+        agents:
+          queue: "gcp"
+
+  - group: ":packer: Packer Checks"
+    key: packer-checks
+    steps:
+      - label: ":packer: Format Check"
+        key: packer-fmt
+        if_changed: "packer/linux/buildkite-vm-image.pkr.hcl"
+        command: .buildkite/scripts/format_packer
+        plugins:
+          - *packer
+        agents:
+          queue: "gcp"
+
+      - label: ":packer: Validate"
+        key: packer-validate
+        if_changed: "packer/linux/buildkite-vm-image.pkr.hcl"
+        command: .buildkite/scripts/validate_packer
+        plugins:
+          - *packer
+        agents:
+          queue: "gcp"
+
+      - label: ":bash: ShellCheck"
+        key: shellcheck
+        plugins:
+          - *shellcheck
+        agents:
+          queue: "gcp"
+
+  - group: ":terraform: Examples"
+    key: terraform-example-checks
+    steps:
+      - label: ":terraform: Validate Examples"
+        key: terraform-validate-examples
+        if_changed: "examples/**"
+        command: .buildkite/scripts/validate_examples
+        plugins:
+          - *terraform_docker
+        agents:
+          queue: "gcp"
+
+  #
+  # Build
+  #
+  - label: ":hammer: Build x86-64 Image"
+    id: build-x86-64
+    if: *trusted_image_build
+    if_changed: *if_changed_image
+    depends_on:
+      - terraform-checks
+      - packer-checks
+      - terraform-example-checks
     plugins:
-      - gcp-workload-identity-federation#v1.6.0:
+      - &gcp_identity_plugin
+        gcp-workload-identity-federation#v1.6.0:
           audience: "//iam.googleapis.com/projects/203137002969/locations/global/workloadIdentityPools/buildkite-image-builder-pool/providers/buildkite-image-builder"
           service-account: "gcp-image-builder-ci@buildkite-gcp-stack.iam.gserviceaccount.com"
       - docker-compose#v5.14.0:
           run: packer-builder
           config: .buildkite/docker-compose.yml
-          command: [".buildkite/scripts/build-and-publish-image", "{{matrix.arch}}"]
+          command: [".buildkite/scripts/build-image", "x86-64"]
           propagate-gcp-auth-tokens: true
           user: "999:988"
     agents:
@@ -19,8 +172,168 @@ steps:
     artifact_paths:
       - "packer/linux/*.log"
       - "packer/.buildkite/*-image-name.txt"
-    matrix:
-      setup:
-        arch:
-          - x86-64
-          - arm64
+
+  - label: ":hammer: Build arm64 Image"
+    id: build-arm64
+    if: *trusted_image_build
+    if_changed: *if_changed_image
+    depends_on:
+      - terraform-checks
+      - packer-checks
+      - terraform-example-checks
+    plugins:
+      - *gcp_identity_plugin
+      - docker-compose#v5.14.0:
+          run: packer-builder
+          config: .buildkite/docker-compose.yml
+          command: [".buildkite/scripts/build-image", "arm64"]
+          propagate-gcp-auth-tokens: true
+          user: "999:988"
+    agents:
+      queue: "gcp"
+    artifact_paths:
+      - "packer/linux/*.log"
+      - "packer/.buildkite/*-image-name.txt"
+
+  #
+  # Clean temporary Packer resources (runs even if image builds fail)
+  #
+  - label: ":wastebasket: Clean x86-64 Packer Resources"
+    id: cleanup-packer-x86-64
+    if: *trusted_image_build
+    if_changed: *if_changed_image
+    depends_on: build-x86-64
+    allow_dependency_failure: true
+    command: .buildkite/scripts/delete-packer-resources x86-64
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  - label: ":wastebasket: Clean arm64 Packer Resources"
+    id: cleanup-packer-arm64
+    if: *trusted_image_build
+    if_changed: *if_changed_image
+    depends_on: build-arm64
+    allow_dependency_failure: true
+    command: .buildkite/scripts/delete-packer-resources arm64
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  #
+  # Launch test instances
+  #
+  - label: ":rocket: Launch x86-64 Test Instance"
+    id: launch-x86-64
+    if: *trusted_image_build
+    if_changed: *if_changed_image
+    depends_on:
+      - build-x86-64
+      - cleanup-packer-x86-64
+    command: .buildkite/scripts/launch-test-instance x86-64
+    concurrency_group: gcp-image-test
+    concurrency: 1
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  - label: ":rocket: Launch arm64 Test Instance"
+    id: launch-arm64
+    if: *trusted_image_build
+    if_changed: *if_changed_image
+    depends_on:
+      - build-arm64
+      - cleanup-packer-arm64
+    command: .buildkite/scripts/launch-test-instance arm64
+    concurrency_group: gcp-image-test
+    concurrency: 1
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  #
+  # Test
+  #
+  - label: ":test_tube: Test x86-64 Image"
+    id: test-x86-64
+    if: *trusted_image_build
+    if_changed: *if_changed_image
+    depends_on: launch-x86-64
+    command:
+      - sudo goss validate --format documentation
+    concurrency_group: gcp-image-test
+    concurrency: 1
+    timeout_in_minutes: 10
+    agents:
+      queue: "gcp-image-test"
+      gcp-instance: "bk-image-test-x86-64-${BUILDKITE_BUILD_NUMBER}"
+
+  - label: ":test_tube: Test arm64 Image"
+    id: test-arm64
+    if: *trusted_image_build
+    if_changed: *if_changed_image
+    depends_on: launch-arm64
+    command:
+      - sudo goss validate --format documentation
+    concurrency_group: gcp-image-test
+    concurrency: 1
+    timeout_in_minutes: 10
+    agents:
+      queue: "gcp-image-test"
+      gcp-instance: "bk-image-test-arm64-${BUILDKITE_BUILD_NUMBER}"
+
+  #
+  # Publish
+  #
+  - label: ":cloud: Publish x86-64 Image"
+    id: publish-x86-64
+    if: *main_only
+    if_changed: *if_changed_image
+    depends_on: test-x86-64
+    command: .buildkite/scripts/publish-image x86-64
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  - label: ":cloud: Publish arm64 Image"
+    id: publish-arm64
+    if: *main_only
+    if_changed: *if_changed_image
+    depends_on: test-arm64
+    command: .buildkite/scripts/publish-image arm64
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  #
+  # Delete test instances (runs even if tests fail)
+  #
+  - label: ":wastebasket: Delete x86-64 Test Instance"
+    id: delete-x86-64
+    if: *trusted_image_build
+    if_changed: *if_changed_image
+    depends_on: test-x86-64
+    allow_dependency_failure: true
+    command: .buildkite/scripts/delete-test-instance x86-64
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  - label: ":wastebasket: Delete arm64 Test Instance"
+    id: delete-arm64
+    if: *trusted_image_build
+    if_changed: *if_changed_image
+    depends_on: test-arm64
+    allow_dependency_failure: true
+    command: .buildkite/scripts/delete-test-instance arm64
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"

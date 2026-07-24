@@ -38,6 +38,18 @@ BUILDKITE_QUEUE=$(get_metadata "buildkite-queue" "default")
 BUILDKITE_PRIORITY=$(get_metadata "buildkite-priority" "1")
 BUILDKITE_TAGS=$(get_metadata "buildkite-tags" "")
 BUILDKITE_API_ENDPOINT=$(get_metadata "buildkite-api-endpoint" "")
+BUILDKITE_GCP_ENABLE_SECRET_MANAGER=$(get_metadata "buildkite-enable-secret-manager" "true")
+BUILDKITE_DISCONNECT_AFTER_JOB=$(get_metadata "buildkite-disconnect-after-job" "false")
+
+# Only explicit boolean metadata values change optional agent behavior. Normalize
+# everything else to secure, backward-compatible defaults and avoid writing
+# arbitrary metadata content into generated configuration files.
+if [[ "$BUILDKITE_GCP_ENABLE_SECRET_MANAGER" != "false" ]]; then
+    BUILDKITE_GCP_ENABLE_SECRET_MANAGER="true"
+fi
+if [[ "$BUILDKITE_DISCONNECT_AFTER_JOB" != "true" ]]; then
+    BUILDKITE_DISCONNECT_AFTER_JOB="false"
+fi
 
 # GCP context (for tags)
 PROJECT_ID=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/project/project-id")
@@ -51,6 +63,8 @@ export BUILDKITE_QUEUE
 export BUILDKITE_PRIORITY
 export BUILDKITE_TAGS
 export BUILDKITE_API_ENDPOINT
+export BUILDKITE_GCP_ENABLE_SECRET_MANAGER
+export BUILDKITE_DISCONNECT_AFTER_JOB
 export PROJECT_ID
 export ZONE
 export INSTANCE_NAME
@@ -70,6 +84,13 @@ echo "Generating configuration from templates..."
 
 envsubst < /etc/buildkite-agent/templates/buildkite-agent.cfg.template \
   | sudo tee /etc/buildkite-agent/buildkite-agent.cfg > /dev/null
+
+# The template retains a literal false default so images remain compatible with
+# older Terraform module bootstraps that do not export this newer setting.
+if [[ "$BUILDKITE_DISCONNECT_AFTER_JOB" == "true" ]]; then
+    sudo sed -i 's/^disconnect-after-job=.*/disconnect-after-job=true/' \
+      /etc/buildkite-agent/buildkite-agent.cfg
+fi
 
 # Add API endpoint if specified
 if [[ -n "$BUILDKITE_API_ENDPOINT" ]]; then
@@ -96,6 +117,10 @@ echo "Starting Buildkite agent service..."
 sudo systemctl daemon-reload
 sudo systemctl enable buildkite-agent
 sudo systemctl start buildkite-agent
+
+# Enable automatic security update timers. unattended-upgrades is restored
+# before image capture, and these timers are started when each agent boots.
+sudo systemctl enable --now apt-daily.timer apt-daily-upgrade.timer
 
 # Enable and start preemption monitoring if available
 if systemctl list-unit-files | grep -q preemption-monitor; then

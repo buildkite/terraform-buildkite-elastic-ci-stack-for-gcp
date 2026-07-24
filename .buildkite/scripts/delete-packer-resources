@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Deletes temporary GCE resources left behind if a Packer process exits before
+# its normal teardown runs.
+# Usage: ./delete-packer-resources <arch>
+
+ARCH="${1:?Usage: $0 <arch> (x86-64 or arm64)}"
+if [[ "$ARCH" != "x86-64" && "$ARCH" != "arm64" ]]; then
+  echo "Error: arch must be 'x86-64' or 'arm64', got '${ARCH}'"
+  exit 1
+fi
+
+PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
+ZONE="${GCP_BUILD_ZONE:-us-central1-a}"
+BUILD_NUMBER="${BUILDKITE_BUILD_NUMBER:-local}"
+COMMIT="${BUILDKITE_COMMIT:-unknown}"
+RESOURCE_NAME="packer-${ARCH}-${BUILD_NUMBER}-${COMMIT:0:7}"
+
+echo "--- :broom: Cleaning temporary Packer resources for ${ARCH}"
+echo "Project:  ${PROJECT_ID}"
+echo "Zone:     ${ZONE}"
+echo "Resource: ${RESOURCE_NAME}"
+
+if gcloud compute instances describe "$RESOURCE_NAME" \
+    --project="$PROJECT_ID" \
+    --zone="$ZONE" \
+    &>/dev/null; then
+  echo "Deleting Packer instance and all attached disks..."
+  gcloud compute instances delete "$RESOURCE_NAME" \
+    --project="$PROJECT_ID" \
+    --zone="$ZONE" \
+    --delete-disks=all \
+    --quiet
+else
+  echo "Packer instance does not exist; Packer may have already removed it."
+fi
+
+# Packer creates the boot disk with the same name as the instance. Check it
+# separately because abrupt worker loss can leave the disk behind even after
+# the VM is deleted.
+if gcloud compute disks describe "$RESOURCE_NAME" \
+    --project="$PROJECT_ID" \
+    --zone="$ZONE" \
+    &>/dev/null; then
+  echo "Deleting retained Packer disk..."
+  gcloud compute disks delete "$RESOURCE_NAME" \
+    --project="$PROJECT_ID" \
+    --zone="$ZONE" \
+    --quiet
+else
+  echo "Packer disk does not exist; no disk cleanup is needed."
+fi
+
+echo "--- :white_check_mark: Temporary Packer resource cleanup complete"

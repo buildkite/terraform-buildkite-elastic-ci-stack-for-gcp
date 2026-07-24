@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build and publish a GCP VM image
-# Usage: ./build-and-publish-image <arch>
+# Build a GCP VM image
+# Usage: ./build-image <arch>
 
 ARCH="${1:-x86-64}"
 PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
@@ -26,7 +26,7 @@ cd packer
   --zone "$BUILD_ZONE" \
   --service-account "$SERVICE_ACCOUNT"
 
-echo "--- :earth_americas: Making image public"
+echo "--- :mag: Extracting image name from manifest"
 
 # Get the image name from Packer's manifest file
 MANIFEST_FILE="linux/manifest.json"
@@ -47,22 +47,28 @@ fi
 
 echo "Found image: $IMAGE_NAME"
 
-# Make the image public
-echo "Granting public access to $IMAGE_NAME"
-gcloud compute images add-iam-policy-binding "$IMAGE_NAME" \
-  --project="$PROJECT_ID" \
-  --member="allAuthenticatedUsers" \
-  --role="roles/compute.imageUser"
+# Verify that the resulting image architecture matches the requested variant.
+# This prevents an incorrectly named image from reaching validation or publish.
+EXPECTED_GCP_ARCH="X86_64"
+if [[ "$ARCH" == "arm64" ]]; then
+  EXPECTED_GCP_ARCH="ARM64"
+fi
+ACTUAL_GCP_ARCH=$(gcloud compute images describe "$IMAGE_NAME" \
+  --project "$PROJECT_ID" \
+  --format='value(architecture)')
+if [[ "$ACTUAL_GCP_ARCH" != "$EXPECTED_GCP_ARCH" ]]; then
+  echo "Error: Image $IMAGE_NAME has architecture $ACTUAL_GCP_ARCH; expected $EXPECTED_GCP_ARCH"
+  exit 1
+fi
+echo "Verified image architecture: $ACTUAL_GCP_ARCH"
 
-# Add image to family for easy reference
-echo "Adding image to family buildkite-ci-stack-${ARCH}"
-gcloud compute images update "$IMAGE_NAME" \
-  --project="$PROJECT_ID" \
-  --family="buildkite-ci-stack-${ARCH}"
-
-# Export image name for later steps
+# Export image name as artifact for later reference
+# NOTE: This script runs inside a Docker container (via docker-compose plugin)
+# so buildkite-agent CLI is not available. Downstream steps read the image name
+# from this artifact file instead.
 echo "Exporting image name for downstream steps"
-mkdir -p .buildkite
-echo "$IMAGE_NAME" > ".buildkite/${ARCH}-image-name.txt"
+cd ..
+mkdir -p packer/.buildkite
+echo "$IMAGE_NAME" > "packer/.buildkite/${ARCH}-image-name.txt"
 
-echo "--- :white_check_mark: Successfully built and published ${ARCH} image: $IMAGE_NAME"
+echo "--- :white_check_mark: Successfully built ${ARCH} image: $IMAGE_NAME"

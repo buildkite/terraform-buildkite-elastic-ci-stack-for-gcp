@@ -57,18 +57,19 @@ DOCKER_BUILDX_VERSION="0.26.1"
 
 # Create plugin directory
 sudo mkdir -p /usr/libexec/docker/cli-plugins
+sudo chmod 755 /usr/libexec/docker /usr/libexec/docker/cli-plugins
 
 # Install Docker Buildx
 echo "Installing Docker Buildx v${DOCKER_BUILDX_VERSION}..."
 sudo curl -L -o /usr/libexec/docker/cli-plugins/docker-buildx \
   "https://github.com/docker/buildx/releases/download/v${DOCKER_BUILDX_VERSION}/buildx-v${DOCKER_BUILDX_VERSION}.linux-${DOCKER_BUILDX_ARCH}"
-sudo chmod +x /usr/libexec/docker/cli-plugins/docker-buildx
+sudo chmod 755 /usr/libexec/docker/cli-plugins/docker-buildx
 
 # Install Docker Compose v2
 echo "Installing Docker Compose v${DOCKER_COMPOSE_V2_VERSION}..."
 sudo curl -L -o /usr/libexec/docker/cli-plugins/docker-compose \
   "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_V2_VERSION}/docker-compose-linux-${DOCKER_COMPOSE_V2_ARCH}"
-sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+sudo chmod 755 /usr/libexec/docker/cli-plugins/docker-compose
 
 # Create backward compatibility symlink for docker-compose v1 commands
 sudo ln -sf /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose

@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Default values
 PROJECT_ID=""
 ZONE="us-central1-a"
-MACHINE_TYPE="e2-standard-4"
+MACHINE_TYPE=""
 ARCH="x86-64"
 BUILD_NUMBER="$(date +%Y%m%d-%H%M%S)"
 AGENT_VERSION="stable"
@@ -30,7 +30,7 @@ Build a custom GCP VM image for Buildkite Elastic CI Stack
 OPTIONS:
     -p, --project-id PROJECT_ID    GCP project ID (required)
     -z, --zone ZONE               GCP zone (default: us-central1-a)
-    -m, --machine-type TYPE       Machine type for build (default: e2-standard-4)
+    -m, --machine-type TYPE       Machine type for build (default: e2-standard-4 or t2a-standard-4)
     -a, --arch ARCH               Architecture: x86-64 or arm64 (default: x86-64)
     -b, --build-number NUMBER     Build number (default: timestamp)
     -v, --agent-version VERSION   Buildkite agent version (default: stable)
@@ -209,6 +209,32 @@ if [[ "$ARCH" != "x86-64" && "$ARCH" != "arm64" ]]; then
     exit 1
 fi
 
+# Packer's builder VM must use the same CPU architecture as the source image.
+# Select an architecture-appropriate default unless the caller supplied one.
+if [[ -z "$MACHINE_TYPE" ]]; then
+    if [[ "$ARCH" == "arm64" ]]; then
+        MACHINE_TYPE="t2a-standard-4"
+    else
+        MACHINE_TYPE="e2-standard-4"
+    fi
+fi
+
+# Fail early with a clear error when an incompatible machine type is supplied.
+if ! MACHINE_ARCH=$(gcloud compute machine-types describe "$MACHINE_TYPE" \
+    --project="$PROJECT_ID" \
+    --zone="$ZONE" \
+    --format='value(architecture)' 2>/dev/null); then
+    log_error "Machine type '$MACHINE_TYPE' does not exist or is not accessible in $ZONE"
+    exit 1
+fi
+if [[ "$ARCH" == "arm64" && "$MACHINE_ARCH" != "ARM64" ]]; then
+    log_error "Architecture arm64 requires an ARM64 machine type; '$MACHINE_TYPE' is not ARM64 in $ZONE"
+    exit 1
+elif [[ "$ARCH" == "x86-64" && "$MACHINE_ARCH" == "ARM64" ]]; then
+    log_error "Architecture x86-64 requires an x86 machine type; '$MACHINE_TYPE' is ARM64"
+    exit 1
+fi
+
 log_info "Starting Buildkite Elastic CI Stack GCP image build..."
 log_info "Configuration:"
 log_info "  Project ID: $PROJECT_ID"
@@ -231,8 +257,7 @@ check_service_account
 log_info "Initializing Packer plugins..."
 cd "$SCRIPT_DIR/linux"
 if [ ! -d ".packer.d" ] || [ ! "$(ls -A .packer.d 2>/dev/null)" ]; then
-    packer init buildkite-vm-image.pkr.hcl
-    if [[ $? -ne 0 ]]; then
+    if ! packer init buildkite-vm-image.pkr.hcl; then
         log_error "Failed to initialize Packer plugins"
         exit 1
     fi
@@ -243,7 +268,7 @@ cd "$SCRIPT_DIR"
 log_info "Building Packer image..."
 
 cd "$SCRIPT_DIR/linux"
-packer build \
+if packer build \
     -var "project_id=$PROJECT_ID" \
     -var "zone=$ZONE" \
     -var "machine_type=$MACHINE_TYPE" \
@@ -251,9 +276,7 @@ packer build \
     -var "build_number=$BUILD_NUMBER" \
     -var "agent_version=$AGENT_VERSION" \
     -var "service_account_email=$SERVICE_ACCOUNT_EMAIL" \
-    buildkite-vm-image.pkr.hcl
-
-if [[ $? -eq 0 ]]; then
+    buildkite-vm-image.pkr.hcl; then
     log_info "Image build completed successfully!"
     log_info "You can now use this image to create Buildkite CI agents in GCP."
     log_info ""

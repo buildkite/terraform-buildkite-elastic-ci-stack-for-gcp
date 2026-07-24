@@ -9,8 +9,12 @@ echo "Installing Google Cloud Ops Agent..."
 
 # Install the Ops Agent using Google's official installation script
 # This is the recommended method per https://cloud.google.com/stackdriver/docs/solutions/agents/ops-agent/installation
+# Under CIS umask 027, keyring files are created as 640 (unreadable by apt).
+# Google's installer script writes the keyring and then tries to apt-get update
+# internally, so we can't fix permissions between those steps. Instead, temporarily
+# set umask to 022 for the entire installer.
 curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
-sudo bash add-google-cloud-ops-agent-repo.sh --also-install
+sudo bash -c 'umask 022 && bash add-google-cloud-ops-agent-repo.sh --also-install'
 
 # Verify installation by checking if the service exists
 if ! systemctl list-unit-files google-cloud-ops-agent.service &>/dev/null; then

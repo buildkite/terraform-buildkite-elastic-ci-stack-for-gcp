@@ -13,8 +13,9 @@ variable "arch" {
 }
 
 variable "machine_type" {
-  type    = string
-  default = "e2-standard-4"
+  type        = string
+  description = "Packer builder machine type. Defaults to e2-standard-4 for x86-64 and t2a-standard-4 for arm64."
+  default     = ""
 }
 
 variable "zone" {
@@ -42,12 +43,6 @@ variable "is_released" {
   default = false
 }
 
-variable "image_family" {
-  type        = string
-  description = "The image family name for the custom image"
-  default     = "buildkite-ci-stack"
-}
-
 variable "source_image_family" {
   type        = string
   description = "The source Debian image family to build from"
@@ -73,16 +68,29 @@ variable "service_account_email" {
   default     = ""
 }
 
-source "googlecompute" "buildkite-ci-stack" {
-  project_id              = var.project_id
-  source_image_family     = var.base_image_name == "" ? var.source_image_family : null
-  source_image            = var.base_image_name == "" ? null : var.base_image_name
-  source_image_project_id = [var.source_image_project]
-  zone                    = var.zone
-  machine_type            = var.machine_type
+locals {
+  builder_machine_type = var.machine_type != "" ? var.machine_type : (var.arch == "arm64" ? "t2a-standard-4" : "e2-standard-4")
+}
 
-  image_name        = "buildkite-ci-stack-${var.arch}-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
-  image_family      = var.image_family
+source "googlecompute" "buildkite-ci-stack" {
+  project_id                  = var.project_id
+  source_image_family         = var.base_image_name == "" ? (var.arch == "arm64" ? "${var.source_image_family}-arm64" : var.source_image_family) : null
+  source_image                = var.base_image_name == "" ? null : var.base_image_name
+  source_image_project_id     = [var.source_image_project]
+  zone                        = var.zone
+  machine_type                = local.builder_machine_type
+  instance_name               = "packer-${var.arch}-${var.build_number}"
+  disk_name                   = "packer-${var.arch}-${var.build_number}"
+  max_run_duration_in_seconds = 3600
+  instance_termination_action = "DELETE"
+
+  labels = {
+    component    = "packer-builder"
+    architecture = var.arch
+    build_number = var.build_number
+  }
+
+  image_name        = "buildkite-ci-stack-${var.arch}-${formatdate("YYYY-MM-DD-hhmm", timestamp())}-${var.build_number}"
   image_description = "Buildkite Elastic CI Stack (Debian 13 based) v0.1.0"
 
   ssh_username = "packer"
@@ -129,6 +137,7 @@ build {
 
   # Create empty directories for plugins and build
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     inline = [
       "mkdir -p /tmp/plugins /tmp/build",
       "echo 'Created empty directories for plugins and build artifacts'"
@@ -137,41 +146,49 @@ build {
 
   # Essential utilities & updates
   provisioner "shell" {
-    script = "scripts/install-utils"
+    remote_folder = "/var/tmp"
+    script        = "scripts/install-utils"
   }
 
   # Buildkite Agent installation
   provisioner "shell" {
-    script = "scripts/install-buildkite-agent"
+    remote_folder = "/var/tmp"
+    script        = "scripts/install-buildkite-agent"
   }
 
   # Buildkite utilities (excluding S3-related components)
   provisioner "shell" {
-    script = "scripts/install-buildkite-utils"
+    remote_folder = "/var/tmp"
+    script        = "scripts/install-buildkite-utils"
   }
 
   # Docker installation
   provisioner "shell" {
-    script = "scripts/install-docker"
+    remote_folder = "/var/tmp"
+    script        = "scripts/install-docker"
   }
 
   # Docker configuration (daemon.json, GC scripts, systemd timers)
   provisioner "shell" {
-    script = "scripts/configure-docker"
+    remote_folder = "/var/tmp"
+    script        = "scripts/configure-docker"
   }
 
   # Session Manager-like functionality for GCP
   provisioner "shell" {
-    script = "scripts/install-gcp-tools"
+    remote_folder = "/var/tmp"
+    script        = "scripts/install-gcp-tools"
   }
 
   # Google Cloud Ops Agent for centralized logging and monitoring
   provisioner "shell" {
-    script = "scripts/install-ops-agent"
+    remote_folder = "/var/tmp"
+    script        = "scripts/install-ops-agent"
   }
 
   # Configure rsyslog to route systemd service logs to files
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     inline = [
       "echo 'Installing rsyslog configuration for service logs...'",
       "sudo cp /tmp/conf/rsyslog/buildkite-logging.conf /etc/rsyslog.d/10-buildkite-logging.conf",
@@ -185,6 +202,7 @@ build {
 
   # Final cleanup
   provisioner "shell" {
-    script = "scripts/cleanup"
+    remote_folder = "/var/tmp"
+    script        = "scripts/cleanup"
   }
 }

@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Publish a GCP VM image (make public and add to family)
+# Usage: ./publish-image <arch>
+
+ARCH="${1:-x86-64}"
+PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
+
+echo "--- :earth_americas: Publishing ${ARCH} image"
+echo "Project: ${PROJECT_ID}"
+
+# Retrieve the image name from Buildkite metadata
+IMAGE_NAME=$(buildkite-agent meta-data get "${ARCH}_image_name")
+
+if [[ -z "$IMAGE_NAME" ]]; then
+  echo "Error: Could not retrieve image name from Buildkite metadata (key: ${ARCH}_image_name)"
+  exit 1
+fi
+
+echo "Found image: $IMAGE_NAME"
+
+# Make the image public
+echo "Granting public access to $IMAGE_NAME"
+gcloud compute images add-iam-policy-binding "$IMAGE_NAME" \
+  --project="$PROJECT_ID" \
+  --member="allAuthenticatedUsers" \
+  --role="roles/compute.imageUser"
+
+# Add image to family for easy reference
+echo "Adding image to family buildkite-ci-stack-${ARCH}"
+gcloud compute images update "$IMAGE_NAME" \
+  --project="$PROJECT_ID" \
+  --family="buildkite-ci-stack-${ARCH}"
+
+echo "--- :white_check_mark: Successfully published ${ARCH} image: $IMAGE_NAME"

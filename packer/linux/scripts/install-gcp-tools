@@ -17,12 +17,12 @@ sudo -E apt-get install -yq google-cloud-cli-gke-gcloud-auth-plugin
 # Create a simple metadata service helper (equivalent to AWS instance metadata)
 echo "Creating GCP metadata helper script..."
 sudo cp /tmp/templates/scripts/gcp-metadata /usr/local/bin/gcp-metadata
-sudo chmod +x /usr/local/bin/gcp-metadata
+sudo chmod 755 /usr/local/bin/gcp-metadata
 
 # Create a spot/preemptible instance handler (equivalent to AWS spot instance handling)
 echo "Creating preemptible instance monitor..."
 sudo cp /tmp/templates/scripts/monitor-preemption /usr/local/bin/monitor-preemption
-sudo chmod +x /usr/local/bin/monitor-preemption
+sudo chmod 755 /usr/local/bin/monitor-preemption
 
 # Create systemd service for preemption monitoring
 echo "Creating preemption monitor systemd service..."
@@ -36,7 +36,7 @@ echo "Setting up basic system monitoring (ops-agent excluded from v1.0.0)..."
 
 # Create a simple system metrics collection script
 sudo cp /tmp/templates/scripts/collect-system-metrics /usr/local/bin/collect-system-metrics
-sudo chmod +x /usr/local/bin/collect-system-metrics
+sudo chmod 755 /usr/local/bin/collect-system-metrics
 
 echo "Creating log rotation configuration for buildkite agent..."
 sudo cp /tmp/templates/config/logrotate-buildkite-agent /etc/logrotate.d/buildkite-agent

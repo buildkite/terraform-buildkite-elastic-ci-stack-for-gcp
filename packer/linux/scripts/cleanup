@@ -7,6 +7,13 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 
 echo "Starting cleanup process..."
 
+# unattended-upgrades is removed during provisioning to avoid dpkg lock
+# contention. Restore it before capturing the image so launched agents continue
+# to receive automatic security updates.
+echo "Restoring automatic security upgrades..."
+sudo -E apt-get update -y
+sudo -E apt-get install -y unattended-upgrades
+
 # Clean package cache
 echo "Cleaning package cache..."
 sudo -E apt-get clean
