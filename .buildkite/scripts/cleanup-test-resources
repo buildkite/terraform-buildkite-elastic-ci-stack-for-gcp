@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Safety net script that cleans up leaked GCE test resources.
+# Finds and deletes any instances matching "bk-image-test-*" older than 1 day.
+# Usage: ./cleanup-test-resources (no arguments)
+
+PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
+ZONE="${GCP_BUILD_ZONE:-us-central1-a}"
+
+# Compute the cutoff timestamp (1 day ago) in RFC 3339 format
+if date --version &>/dev/null 2>&1; then
+  # GNU date
+  CUTOFF="$(date -u -d '1 day ago' '+%Y-%m-%dT%H:%M:%S.000Z')"
+else
+  # macOS/BSD date
+  CUTOFF="$(date -u -v-1d '+%Y-%m-%dT%H:%M:%S.000Z')"
+fi
+
+echo "--- :broom: Cleaning up leaked test resources"
+echo "Project: ${PROJECT_ID}"
+echo "Zone: ${ZONE}"
+echo "Cutoff (older than): ${CUTOFF}"
+
+# Find instances matching the test pattern that are older than 1 day
+INSTANCES="$(gcloud compute instances list \
+  --project="${PROJECT_ID}" \
+  --zones="${ZONE}" \
+  --filter="name~'^bk-image-test-' AND creationTimestamp<'${CUTOFF}'" \
+  --format="value(name)" 2>/dev/null || true)"
+
+if [[ -z "${INSTANCES}" ]]; then
+  echo "No stale test instances found. Nothing to clean up."
+  exit 0
+fi
+
+echo "Found stale test instances:"
+echo "${INSTANCES}"
+echo ""
+
+while IFS= read -r instance; do
+  echo "~~~ Deleting stale instance: ${instance}"
+  gcloud compute instances delete "${instance}" \
+    --project="${PROJECT_ID}" \
+    --zone="${ZONE}" \
+    --quiet || echo "Warning: failed to delete ${instance}, continuing..."
+done <<< "${INSTANCES}"
+
+echo "Cleanup complete."

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Deletes a GCE test instance after image validation.
+# Usage: ./delete-test-instance <arch>
+#   where arch is x86-64 or arm64
+
+ARCH="${1:?Usage: $0 <arch> (x86-64 or arm64)}"
+
+PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
+ZONE="${GCP_BUILD_ZONE:-us-central1-a}"
+BUILD_NUMBER="${BUILDKITE_BUILD_NUMBER:-local}"
+INSTANCE_NAME="bk-image-test-${ARCH}-${BUILD_NUMBER}"
+
+# Try to get instance name from metadata as a backup
+if command -v buildkite-agent &>/dev/null; then
+  META_INSTANCE_NAME="$(buildkite-agent meta-data get "${ARCH}_test_instance" 2>/dev/null || true)"
+  if [[ -n "${META_INSTANCE_NAME}" ]]; then
+    INSTANCE_NAME="${META_INSTANCE_NAME}"
+  fi
+fi
+
+echo "--- :gcloud: Deleting test instance ${INSTANCE_NAME}"
+echo "Project: ${PROJECT_ID}"
+echo "Zone: ${ZONE}"
+
+# Check if the instance exists before attempting deletion
+if gcloud compute instances describe "${INSTANCE_NAME}" \
+    --project="${PROJECT_ID}" \
+    --zone="${ZONE}" \
+    &>/dev/null; then
+  echo "Instance ${INSTANCE_NAME} found, deleting..."
+  gcloud compute instances delete "${INSTANCE_NAME}" \
+    --project="${PROJECT_ID}" \
+    --zone="${ZONE}" \
+    --quiet || true
+  echo "Instance ${INSTANCE_NAME} deleted."
+else
+  echo "Instance ${INSTANCE_NAME} does not exist (may have already been deleted or was never created). Skipping."
+fi

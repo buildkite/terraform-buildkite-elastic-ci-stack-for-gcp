@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Build a GCP VM image
+# Usage: ./build-image <arch>
+
+ARCH="${1:-x86-64}"
+PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
+BUILD_ZONE="${GCP_BUILD_ZONE:-us-central1-a}"
+BUILD_NUMBER="${BUILDKITE_BUILD_NUMBER:-local}"
+COMMIT="${BUILDKITE_COMMIT:-unknown}"
+SERVICE_ACCOUNT="${GCP_PACKER_SERVICE_ACCOUNT:-gcp-image-builder-ci@${PROJECT_ID}.iam.gserviceaccount.com}"
+
+echo "--- :hammer: Building ${ARCH} image"
+echo "Project: ${PROJECT_ID}"
+echo "Zone: ${BUILD_ZONE}"
+echo "Build: ${BUILD_NUMBER}-${COMMIT:0:7}"
+echo "Service Account: ${SERVICE_ACCOUNT}"
+
+# Change to packer directory and run build
+cd packer
+./build \
+  --project-id "$PROJECT_ID" \
+  --arch "$ARCH" \
+  --build-number "${BUILD_NUMBER}-${COMMIT:0:7}" \
+  --zone "$BUILD_ZONE" \
+  --service-account "$SERVICE_ACCOUNT"
+
+echo "--- :mag: Extracting image name from manifest"
+
+# Get the image name from Packer's manifest file
+MANIFEST_FILE="linux/manifest.json"
+if [[ ! -f "$MANIFEST_FILE" ]]; then
+  echo "Error: Packer manifest file not found at $MANIFEST_FILE"
+  exit 1
+fi
+
+# Extract image name from manifest (jq parses the JSON output from Packer)
+IMAGE_NAME=$(jq -r '.builds[-1].artifact_id' "$MANIFEST_FILE")
+
+if [[ -z "$IMAGE_NAME" || "$IMAGE_NAME" == "null" ]]; then
+  echo "Error: Could not extract image name from manifest"
+  echo "Manifest contents:"
+  cat "$MANIFEST_FILE"
+  exit 1
+fi
+
+echo "Found image: $IMAGE_NAME"
+
+# Export image name as artifact for later reference
+# NOTE: This script runs inside a Docker container (via docker-compose plugin)
+# so buildkite-agent CLI is not available. Downstream steps read the image name
+# from this artifact file instead.
+echo "Exporting image name for downstream steps"
+cd ..
+mkdir -p packer/.buildkite
+echo "$IMAGE_NAME" > "packer/.buildkite/${ARCH}-image-name.txt"
+
+echo "--- :white_check_mark: Successfully built ${ARCH} image: $IMAGE_NAME"

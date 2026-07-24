@@ -12,6 +12,17 @@ aarch64) ARCH=arm64 ;;
 *) ARCH=unknown ;;
 esac
 
+echo "Waiting for any background apt processes to finish..."
+while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+  echo "  dpkg lock held, waiting 5s..."
+  sleep 5
+done
+
+echo "Stopping and removing unattended-upgrades to prevent lock contention..."
+sudo systemctl stop unattended-upgrades.service 2>/dev/null || true
+sudo systemctl disable unattended-upgrades.service 2>/dev/null || true
+sudo apt-get remove -y unattended-upgrades 2>/dev/null || true
+
 echo "Updating package index and core packages..."
 sudo -E apt-get update -y
 sudo -E apt-get upgrade -y
@@ -40,7 +51,7 @@ sudo systemctl enable --now rsyslog
 
 GIT_LFS_VERSION=3.4.0
 echo "Installing git lfs ${GIT_LFS_VERSION}..."
-pushd "$(mktemp -d)"
+pushd "$(mktemp -d -p /var/tmp)"
 curl -sSL https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/git-lfs-linux-${ARCH}-v${GIT_LFS_VERSION}.tar.gz | tar xz
 sudo git-lfs-${GIT_LFS_VERSION}/install.sh
 popd
@@ -49,9 +60,9 @@ popd
 GOSS_VERSION=v0.3.23
 echo "Installing goss $GOSS_VERSION for system validation..."
 sudo curl -L "https://github.com/goss-org/goss/releases/download/${GOSS_VERSION}/goss-linux-${ARCH}" -o /usr/local/bin/goss
-sudo chmod +rx /usr/local/bin/goss
+sudo chmod 755 /usr/local/bin/goss
 sudo curl -L "https://github.com/goss-org/goss/releases/download/${GOSS_VERSION}/dgoss" -o /usr/local/bin/dgoss
-sudo chmod +rx /usr/local/bin/dgoss
+sudo chmod 755 /usr/local/bin/dgoss
 
 echo "Setting up locale..."
 # Generate the locale

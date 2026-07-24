@@ -15,6 +15,7 @@ sudo apt-get install -y apt-transport-https ca-certificates curl gnupg gettext-b
 echo "Adding Buildkite agent repository..."
 curl -fsSL "https://keys.openpgp.org/vks/v1/by-fingerprint/32A37959C2FA5C3C99EFBC32A79206696452D198" \
   | sudo gpg --dearmor -o /usr/share/keyrings/buildkite-agent-archive-keyring.gpg
+sudo chmod 644 /usr/share/keyrings/buildkite-agent-archive-keyring.gpg
 
 echo "deb [signed-by=/usr/share/keyrings/buildkite-agent-archive-keyring.gpg] https://apt.buildkite.com/buildkite-agent stable main" \
   | sudo tee /etc/apt/sources.list.d/buildkite-agent.list
@@ -45,7 +46,7 @@ sudo cp /tmp/templates/config/buildkite-agent-env.template /etc/buildkite-agent/
 # Install bootstrap script
 echo "Installing bootstrap script..."
 sudo cp /tmp/templates/scripts/bootstrap-buildkite-agent /usr/local/bin/bootstrap-buildkite-agent
-sudo chmod +x /usr/local/bin/bootstrap-buildkite-agent
+sudo chmod 755 /usr/local/bin/bootstrap-buildkite-agent
 
 # Set ownership
 sudo chown -R buildkite-agent:buildkite-agent /etc/buildkite-agent
@@ -55,7 +56,7 @@ sudo chown -R buildkite-agent:buildkite-agent /var/lib/buildkite-agent
 echo "Copying custom hooks..."
 if [ -d /tmp/conf/buildkite-agent/hooks ]; then
   sudo cp -a /tmp/conf/buildkite-agent/hooks/* /etc/buildkite-agent/hooks/ || echo "No hooks to copy"
-  sudo chmod +x /etc/buildkite-agent/hooks/* || true
+  sudo chmod 755 /etc/buildkite-agent/hooks/* || true
   sudo chown -R buildkite-agent:buildkite-agent /etc/buildkite-agent/hooks
 fi
 
@@ -74,17 +75,22 @@ if [ -f /tmp/conf/buildkite-agent/systemd/buildkite-agent.service ]; then
   sudo cp /tmp/conf/buildkite-agent/systemd/buildkite-agent.service /etc/systemd/system/buildkite-agent.service
 fi
 
+# Install TMPDIR systemd drop-in (CIS Level 1 mounts /tmp noexec)
+echo "Installing TMPDIR systemd drop-in..."
+sudo mkdir -p /etc/systemd/system/buildkite-agent.service.d
+sudo cp /tmp/conf/buildkite-agent/systemd/tmpdir.conf /etc/systemd/system/buildkite-agent.service.d/tmpdir.conf
+
 # Install termination scripts
 echo "Installing termination scripts..."
 sudo mkdir -p /usr/local/bin
 if [ -f /tmp/conf/buildkite-agent/scripts/stop-agent-gracefully ]; then
   sudo cp /tmp/conf/buildkite-agent/scripts/stop-agent-gracefully /usr/local/bin/stop-agent-gracefully
-  sudo chmod +x /usr/local/bin/stop-agent-gracefully
+  sudo chmod 755 /usr/local/bin/stop-agent-gracefully
 fi
 
 if [ -f /tmp/conf/buildkite-agent/scripts/terminate-instance ]; then
   sudo cp /tmp/conf/buildkite-agent/scripts/terminate-instance /usr/local/bin/terminate-instance
-  sudo chmod +x /usr/local/bin/terminate-instance
+  sudo chmod 755 /usr/local/bin/terminate-instance
 fi
 
 # Don't enable or start the service - that happens at VM boot via bootstrap

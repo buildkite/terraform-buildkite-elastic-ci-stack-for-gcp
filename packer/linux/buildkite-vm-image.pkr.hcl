@@ -129,6 +129,7 @@ build {
 
   # Create empty directories for plugins and build
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     inline = [
       "mkdir -p /tmp/plugins /tmp/build",
       "echo 'Created empty directories for plugins and build artifacts'"
@@ -137,41 +138,49 @@ build {
 
   # Essential utilities & updates
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     script = "scripts/install-utils"
   }
 
   # Buildkite Agent installation
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     script = "scripts/install-buildkite-agent"
   }
 
   # Buildkite utilities (excluding S3-related components)
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     script = "scripts/install-buildkite-utils"
   }
 
   # Docker installation
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     script = "scripts/install-docker"
   }
 
   # Docker configuration (daemon.json, GC scripts, systemd timers)
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     script = "scripts/configure-docker"
   }
 
   # Session Manager-like functionality for GCP
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     script = "scripts/install-gcp-tools"
   }
 
   # Google Cloud Ops Agent for centralized logging and monitoring
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     script = "scripts/install-ops-agent"
   }
 
   # Configure rsyslog to route systemd service logs to files
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     inline = [
       "echo 'Installing rsyslog configuration for service logs...'",
       "sudo cp /tmp/conf/rsyslog/buildkite-logging.conf /etc/rsyslog.d/10-buildkite-logging.conf",
@@ -185,6 +194,7 @@ build {
 
   # Final cleanup
   provisioner "shell" {
+    remote_folder = "/var/tmp"
     script = "scripts/cleanup"
   }
 }

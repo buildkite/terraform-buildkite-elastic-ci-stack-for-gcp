@@ -1,0 +1,428 @@
+# =============================================================================
+# goss.yaml — GCP Elastic CI Stack for Buildkite: Image Validation Tests
+# =============================================================================
+#
+# This test suite validates that a Packer-built GCP VM image has all required
+# software, services, users, and configuration for running Buildkite agents.
+#
+# Run with: sudo goss validate --format documentation
+#
+# The test instance is a freshly launched VM where the bootstrap script has
+# already run, so buildkite-agent should be active by the time goss executes.
+# =============================================================================
+
+# =============================================================================
+# FILE CHECKS
+# Validate that configuration files, directories, and scripts exist with the
+# correct ownership and permissions.
+# =============================================================================
+file:
+  # -- Buildkite Agent configuration and directories --
+
+  /etc/buildkite-agent/buildkite-agent.cfg:
+    exists: true
+
+  /etc/buildkite-agent/hooks:
+    filetype: directory
+    exists: true
+    owner: buildkite-agent
+    group: buildkite-agent
+
+  /etc/buildkite-agent/templates:
+    filetype: directory
+    exists: true
+    owner: buildkite-agent
+    group: buildkite-agent
+
+  /var/lib/buildkite-agent/builds:
+    filetype: directory
+    exists: true
+    owner: buildkite-agent
+    group: buildkite-agent
+
+  /var/lib/buildkite-agent/git-mirrors:
+    filetype: directory
+    exists: true
+    owner: buildkite-agent
+    group: buildkite-agent
+
+  /var/lib/buildkite-agent/plugins:
+    filetype: directory
+    exists: true
+    owner: buildkite-agent
+    group: buildkite-agent
+
+  # -- Bootstrap and agent lifecycle scripts --
+
+  /usr/local/bin/bootstrap-buildkite-agent:
+    exists: true
+    mode: "0755"
+
+  /usr/local/bin/stop-agent-gracefully:
+    exists: true
+    mode: "0755"
+
+  /usr/local/bin/terminate-instance:
+    exists: true
+    mode: "0755"
+
+  # -- TMPDIR systemd drop-in --
+  # CIS Level 1 mounts /tmp with noexec, so buildkite-agent needs TMPDIR=/var/tmp
+  /etc/systemd/system/buildkite-agent.service.d/tmpdir.conf:
+    exists: true
+
+  # -- Docker configuration --
+
+  /etc/docker/daemon.json:
+    exists: true
+    owner: root
+    group: root
+    mode: "0644"
+
+  # Docker garbage collection scripts
+  /usr/local/bin/docker-gc:
+    exists: true
+    mode: "0755"
+
+  /usr/local/bin/docker-low-disk-gc:
+    exists: true
+    mode: "0755"
+
+  /usr/local/bin/bk-check-disk-space.sh:
+    exists: true
+    mode: "0755"
+
+  # Docker Compose v1 compatibility symlink
+  /usr/local/bin/docker-compose:
+    exists: true
+    filetype: symlink
+
+  # Docker CLI plugins
+  /usr/libexec/docker/cli-plugins/docker-compose:
+    exists: true
+    mode: "0755"
+
+  /usr/libexec/docker/cli-plugins/docker-buildx:
+    exists: true
+    mode: "0755"
+
+  # -- GCP-specific tools --
+
+  /usr/local/bin/gcp-metadata:
+    exists: true
+    mode: "0755"
+
+  /usr/local/bin/monitor-preemption:
+    exists: true
+    mode: "0755"
+
+  # -- Lifecycled --
+
+  /usr/bin/lifecycled:
+    exists: true
+    mode: "0755"
+
+  # -- Buildkite utilities --
+
+  /usr/bin/fix-buildkite-agent-builds-permissions:
+    exists: true
+    mode: "0755"
+
+  # -- Rsyslog configuration for Buildkite log routing --
+
+  /etc/rsyslog.d/10-buildkite-logging.conf:
+    exists: true
+
+  # -- Sudoers config for buildkite-agent --
+
+  /etc/sudoers.d/buildkite-agent:
+    exists: true
+    mode: "0440"
+
+  # -- Goss and dgoss binaries (used by this very test) --
+
+  /usr/local/bin/goss:
+    exists: true
+    mode: "0755"
+
+  /usr/local/bin/dgoss:
+    exists: true
+    mode: "0755"
+
+# =============================================================================
+# USER CHECKS
+# Validate system users required by the stack. The buildkite-agent user is
+# created by the apt package, so we don't hardcode UID/GID.
+# =============================================================================
+user:
+  buildkite-agent:
+    exists: true
+    groups:
+      - buildkite-agent
+      - docker
+    home: /var/lib/buildkite-agent
+    shell: /bin/bash
+
+# =============================================================================
+# GROUP CHECKS
+# Validate that required groups exist. Docker group GID varies by distro.
+# =============================================================================
+group:
+  buildkite-agent:
+    exists: true
+
+  docker:
+    exists: true
+
+# =============================================================================
+# SERVICE CHECKS
+# Validate that systemd services are enabled and running. By the time goss
+# runs, the bootstrap script should have started buildkite-agent.
+# =============================================================================
+service:
+  # -- Core services --
+
+  docker:
+    enabled: true
+    running: true
+
+  buildkite-agent:
+    enabled: true
+    running: true
+
+  sshd:
+    enabled: true
+    running: true
+
+  # -- GCP-specific services --
+  # google-cloud-ops-agent: enabled during image build, auto-starts on boot
+  google-cloud-ops-agent:
+    enabled: true
+    running: true
+
+  # preemption-monitor: watches GCE metadata for preemption notices
+  preemption-monitor:
+    enabled: true
+
+  # -- Supporting services --
+
+  lifecycled:
+    enabled: true
+    running: true
+
+  rsyslog:
+    enabled: true
+    running: true
+
+  # binfmt-support: enables QEMU-based multi-arch container execution
+  binfmt-support:
+    enabled: true
+    running: true
+
+# =============================================================================
+# PROCESS CHECKS
+# Verify key processes are actually running (defense in depth beyond systemd).
+# =============================================================================
+process:
+  buildkite-agent:
+    running: true
+
+  lifecycled:
+    running: true
+
+  sshd:
+    running: true
+
+# =============================================================================
+# PORT CHECKS
+# Verify SSH is listening for remote access.
+# =============================================================================
+port:
+  tcp:22:
+    listening: true
+    ip:
+      - 0.0.0.0
+
+  tcp6:22:
+    listening: true
+    ip:
+      - "::"
+
+# =============================================================================
+# COMMAND CHECKS
+# Validate that all expected CLI tools are installed, services are correctly
+# configured, and Docker is fully functional.
+# =============================================================================
+command:
+  # ---------------------------------------------------------------------------
+  # Core CLI tools installed by install-utils
+  # ---------------------------------------------------------------------------
+
+  git --version:
+    exit-status: 0
+
+  git-lfs --version:
+    exit-status: 0
+    stdout:
+      - /3\.4\.0/
+
+  make --version:
+    exit-status: 0
+
+  curl --version:
+    exit-status: 0
+
+  dig -h:
+    exit-status: 0
+
+  command -v lsof:
+    exit-status: 0
+
+  unzip -v:
+    exit-status: 0
+
+  zip --version:
+    exit-status: 0
+
+  pigz --version:
+    exit-status: 0
+
+  python3 --version:
+    exit-status: 0
+
+  # ---------------------------------------------------------------------------
+  # Buildkite agent
+  # ---------------------------------------------------------------------------
+
+  buildkite-agent --version:
+    exit-status: 0
+
+  # ---------------------------------------------------------------------------
+  # GCP tools (replaces AWS CLI checks from the AWS stack)
+  # ---------------------------------------------------------------------------
+
+  gcloud --version:
+    exit-status: 0
+
+  # ---------------------------------------------------------------------------
+  # Docker version and info
+  # ---------------------------------------------------------------------------
+
+  docker --version:
+    exit-status: 0
+
+  docker compose version:
+    exit-status: 0
+    stdout:
+      - /2\.38\.2/
+
+  docker buildx version:
+    exit-status: 0
+    stdout:
+      - /0\.26\.1/
+
+  # ---------------------------------------------------------------------------
+  # Docker functional tests
+  # ---------------------------------------------------------------------------
+
+  # Basic container execution — proves Docker daemon is healthy
+  docker run --rm alpine:latest echo "hello from goss":
+    exit-status: 0
+    timeout: 60000
+    stdout:
+      - hello from goss
+
+  # ---------------------------------------------------------------------------
+  # Docker CLI plugin check
+  # Verify buildx and compose are registered as Docker CLI plugins.
+  # Goss evaluates the outer template layer; Docker evaluates the inner one.
+  # ---------------------------------------------------------------------------
+  '{{ `docker info --format=",{{range .ClientInfo.Plugins}}{{.Name}},{{end}}"` }}':
+    exit-status: 0
+    timeout: 30000
+    stdout:
+      - /,buildx,/
+      - /,compose,/
+
+  # ---------------------------------------------------------------------------
+  # Multi-architecture support via QEMU / binfmt
+  # These prove that qemu-user-static and binfmt-support are working, allowing
+  # cross-platform container builds and execution.
+  # ---------------------------------------------------------------------------
+
+  docker run --rm --platform linux/arm64 -t arm64v8/ubuntu uname -m:
+    exit-status: 0
+    timeout: 60000
+    stdout:
+      - aarch64
+
+  docker run --rm --platform linux/amd64 -t amd64/ubuntu uname -m:
+    exit-status: 0
+    timeout: 60000
+    stdout:
+      - x86_64
+
+  # ---------------------------------------------------------------------------
+  # Docker garbage collection timers (configured by configure-docker)
+  # These timers periodically clean up unused Docker resources and respond to
+  # low disk space conditions.
+  # ---------------------------------------------------------------------------
+
+  systemctl is-enabled docker-gc.timer:
+    exit-status: 0
+
+  systemctl is-enabled docker-low-disk-gc.timer:
+    exit-status: 0
+
+  # Verify the GC scripts are executable and have valid syntax
+  /usr/local/bin/docker-gc:
+    exit-status: 0
+
+  /usr/local/bin/docker-low-disk-gc:
+    exit-status: 0
+
+  # ---------------------------------------------------------------------------
+  # binfmt mount (required for multi-arch QEMU support)
+  # ---------------------------------------------------------------------------
+
+  systemctl is-enabled binfmt-support.service:
+    exit-status: 0
+
+  # ---------------------------------------------------------------------------
+  # TMPDIR drop-in verification
+  # Confirm that the buildkite-agent systemd service has TMPDIR=/var/tmp in its
+  # environment. This is critical because CIS Level 1 mounts /tmp with noexec,
+  # which would break builds that execute scripts from TMPDIR.
+  # ---------------------------------------------------------------------------
+
+  systemctl show buildkite-agent.service --property=Environment:
+    exit-status: 0
+    stdout:
+      - /TMPDIR=\/var\/tmp/
+
+  # ---------------------------------------------------------------------------
+  # GCP-specific service checks
+  # ---------------------------------------------------------------------------
+
+  systemctl is-enabled preemption-monitor.service:
+    exit-status: 0
+
+  systemctl is-enabled google-cloud-ops-agent.service:
+    exit-status: 0
+
+  # ---------------------------------------------------------------------------
+  # Rsyslog configuration
+  # Verify the custom Buildkite logging config is installed and rsyslog loaded it
+  # ---------------------------------------------------------------------------
+
+  rsyslogd -N1:
+    exit-status: 0
+
+  # ---------------------------------------------------------------------------
+  # Locale — ensure en_US.UTF-8 is available (required for consistent CI output)
+  # ---------------------------------------------------------------------------
+
+  locale -a:
+    exit-status: 0
+    stdout:
+      - en_US.utf8

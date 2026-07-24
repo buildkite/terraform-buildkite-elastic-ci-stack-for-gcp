@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 <arch>"
+  echo "  arch: x86-64 or arm64"
+  exit 1
+fi
+
+ARCH="${1}"
+
+if [[ "$ARCH" != "x86-64" && "$ARCH" != "arm64" ]]; then
+  echo "Error: arch must be 'x86-64' or 'arm64', got '${ARCH}'"
+  exit 1
+fi
+
+# --- Configuration ---
+PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
+
+# NOTE: T2A (Arm) instances may not be available in all zones. If us-central1-a
+# doesn't support T2A, try us-central1-b, us-central1-f, or another region.
+# See: https://cloud.google.com/compute/docs/regions-zones#available
+ZONE="${GCP_BUILD_ZONE:-us-central1-a}"
+
+BUILD_NUMBER="${BUILDKITE_BUILD_NUMBER:-local}"
+INSTANCE_NAME="bk-image-test-${ARCH}-${BUILD_NUMBER}"
+
+echo "--- :key: Fetching agent token from cluster secrets"
+AGENT_TOKEN=$(buildkite-agent secret get GCP_AGENT_TEST_TOKEN)
+
+echo "--- :gcloud: Launching test instance for ${ARCH}"
+echo "Project:  ${PROJECT_ID}"
+echo "Zone:     ${ZONE}"
+echo "Instance: ${INSTANCE_NAME}"
+
+# Retrieve the image name built in the previous step.
+# The build step runs in a Docker container where buildkite-agent is unavailable,
+# so it writes the image name to an artifact file instead of metadata.
+echo "Downloading image name artifact..."
+buildkite-agent artifact download "packer/.buildkite/${ARCH}-image-name.txt" .
+IMAGE_NAME=$(cat "packer/.buildkite/${ARCH}-image-name.txt")
+
+if [[ -z "$IMAGE_NAME" ]]; then
+  echo "Error: Could not read image name from artifact file"
+  exit 1
+fi
+
+# Also store in metadata for downstream steps (publish, delete)
+buildkite-agent meta-data set "${ARCH}_image_name" "$IMAGE_NAME"
+echo "Image:    ${IMAGE_NAME}"
+
+# Determine machine type based on architecture
+if [[ "$ARCH" == "x86-64" ]]; then
+  MACHINE_TYPE="e2-small"
+elif [[ "$ARCH" == "arm64" ]]; then
+  MACHINE_TYPE="t2a-small"
+fi
+echo "Machine:  ${MACHINE_TYPE}"
+
+# The image has /usr/local/bin/bootstrap-buildkite-agent baked in. In production,
+# the Terraform module overwrites it via metadata_startup_script. For the test
+# instance we provide a minimal startup script that just invokes the baked-in
+# bootstrap, exactly as Terraform would.
+STARTUP_SCRIPT=$(cat <<'STARTUP'
+#!/bin/bash
+exec /usr/local/bin/bootstrap-buildkite-agent
+STARTUP
+)
+
+echo "--- :rocket: Creating GCE instance ${INSTANCE_NAME}"
+
+gcloud compute instances create "$INSTANCE_NAME" \
+  --project="$PROJECT_ID" \
+  --zone="$ZONE" \
+  --machine-type="$MACHINE_TYPE" \
+  --image="$IMAGE_NAME" \
+  --image-project="$PROJECT_ID" \
+  --metadata="buildkite-token=${AGENT_TOKEN},buildkite-queue=gcp-image-test,startup-script=${STARTUP_SCRIPT}" \
+  --scopes="cloud-platform" \
+  --tags="buildkite-test"
+
+echo "Instance created successfully."
+
+# --- Wait for the instance to reach RUNNING status and agent to register ---
+echo "--- :hourglass: Waiting for instance to come online"
+
+MAX_WAIT=300   # 5 minutes
+INTERVAL=15
+ELAPSED=0
+
+while [[ $ELAPSED -lt $MAX_WAIT ]]; do
+  STATUS=$(gcloud compute instances describe "$INSTANCE_NAME" \
+    --zone="$ZONE" \
+    --project="$PROJECT_ID" \
+    --format='value(status)' 2>/dev/null || echo "UNKNOWN")
+
+  echo "  [${ELAPSED}s] Instance status: ${STATUS}"
+
+  if [[ "$STATUS" == "RUNNING" ]]; then
+    echo "Instance is RUNNING."
+    # Allow extra time for the bootstrap script to configure and start the
+    # Buildkite agent (~30 seconds).
+    echo "Waiting 30s for the Buildkite agent to register..."
+    sleep 30
+    echo "Done. Agent should be registered on queue 'gcp-image-test'."
+    break
+  fi
+
+  sleep "$INTERVAL"
+  ELAPSED=$((ELAPSED + INTERVAL))
+done
+
+if [[ $ELAPSED -ge $MAX_WAIT ]]; then
+  echo "Error: Instance ${INSTANCE_NAME} did not reach RUNNING status within ${MAX_WAIT}s."
+  exit 1
+fi
+
+# Store the instance name so the cleanup/delete script can find it
+buildkite-agent meta-data set "${ARCH}_test_instance" "$INSTANCE_NAME"
+
+echo "--- :white_check_mark: Test instance ${INSTANCE_NAME} is ready"

@@ -2,16 +2,23 @@ env:
   GCP_PROJECT_ID: "buildkite-gcp-stack"
   GCP_BUILD_ZONE: "us-central1-a"
 
+dag: true
+
 steps:
-  - label: ":hammer: Build {{matrix.arch}} Image"
+  #
+  # Build
+  #
+  - label: ":hammer: Build x86-64 Image"
+    id: build-x86-64
     plugins:
-      - gcp-workload-identity-federation#v1.5.0:
+      - &gcp_identity_plugin
+        gcp-workload-identity-federation#v1.5.0:
           audience: "//iam.googleapis.com/projects/203137002969/locations/global/workloadIdentityPools/buildkite-image-builder-pool/providers/buildkite-image-builder"
           service-account: "gcp-image-builder-ci@buildkite-gcp-stack.iam.gserviceaccount.com"
       - docker-compose#v5.13.0:
           run: packer-builder
           config: .buildkite/docker-compose.yml
-          command: [".buildkite/scripts/build-and-publish-image", "{{matrix.arch}}"]
+          command: [".buildkite/scripts/build-image", "x86-64"]
           propagate-gcp-auth-tokens: true
           user: "999:988"
     agents:
@@ -19,8 +26,113 @@ steps:
     artifact_paths:
       - "packer/linux/*.log"
       - "packer/.buildkite/*-image-name.txt"
-    matrix:
-      setup:
-        arch:
-          - x86-64
-          - arm64
+
+  - label: ":hammer: Build arm64 Image"
+    id: build-arm64
+    plugins:
+      - *gcp_identity_plugin
+      - docker-compose#v5.13.0:
+          run: packer-builder
+          config: .buildkite/docker-compose.yml
+          command: [".buildkite/scripts/build-image", "arm64"]
+          propagate-gcp-auth-tokens: true
+          user: "999:988"
+    agents:
+      queue: "gcp"
+    artifact_paths:
+      - "packer/linux/*.log"
+      - "packer/.buildkite/*-image-name.txt"
+
+  #
+  # Launch test instances
+  #
+  - label: ":rocket: Launch x86-64 Test Instance"
+    id: launch-x86-64
+    depends_on: build-x86-64
+    command: .buildkite/scripts/launch-test-instance x86-64
+    concurrency_group: gcp-image-test
+    concurrency: 1
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  - label: ":rocket: Launch arm64 Test Instance"
+    id: launch-arm64
+    depends_on: build-arm64
+    command: .buildkite/scripts/launch-test-instance arm64
+    concurrency_group: gcp-image-test
+    concurrency: 1
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  #
+  # Test
+  #
+  - label: ":test_tube: Test x86-64 Image"
+    id: test-x86-64
+    depends_on: launch-x86-64
+    command:
+      - sudo goss validate --format documentation
+    concurrency_group: gcp-image-test
+    concurrency: 1
+    timeout_in_minutes: 10
+    agents:
+      queue: "gcp-image-test"
+
+  - label: ":test_tube: Test arm64 Image"
+    id: test-arm64
+    depends_on: launch-arm64
+    command:
+      - sudo goss validate --format documentation
+    concurrency_group: gcp-image-test
+    concurrency: 1
+    timeout_in_minutes: 10
+    agents:
+      queue: "gcp-image-test"
+
+  #
+  # Publish
+  #
+  - label: ":cloud: Publish x86-64 Image"
+    id: publish-x86-64
+    depends_on: test-x86-64
+    command: .buildkite/scripts/publish-image x86-64
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  - label: ":cloud: Publish arm64 Image"
+    id: publish-arm64
+    depends_on: test-arm64
+    command: .buildkite/scripts/publish-image arm64
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  #
+  # Delete test instances (runs even if tests fail)
+  #
+  - label: ":wastebasket: Delete x86-64 Test Instance"
+    id: delete-x86-64
+    depends_on: test-x86-64
+    allow_dependency_failure: true
+    command: .buildkite/scripts/delete-test-instance x86-64
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
+
+  - label: ":wastebasket: Delete arm64 Test Instance"
+    id: delete-arm64
+    depends_on: test-arm64
+    allow_dependency_failure: true
+    command: .buildkite/scripts/delete-test-instance arm64
+    plugins:
+      - *gcp_identity_plugin
+    agents:
+      queue: "gcp"
