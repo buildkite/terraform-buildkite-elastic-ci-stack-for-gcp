@@ -112,14 +112,6 @@ file:
     exists: true
     mode: "0755"
 
-  # Preemption is handled by the GCP shutdown script; the old polling monitor
-  # must not be present because it would race the same graceful-stop handler.
-  /usr/local/bin/monitor-preemption:
-    exists: false
-
-  /etc/systemd/system/preemption-monitor.service:
-    exists: false
-
   # -- Buildkite utilities --
 
   /usr/bin/fix-buildkite-agent-builds-permissions:
