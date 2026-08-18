@@ -19,18 +19,6 @@ echo "Creating GCP metadata helper script..."
 sudo cp /tmp/templates/scripts/gcp-metadata /usr/local/bin/gcp-metadata
 sudo chmod 755 /usr/local/bin/gcp-metadata
 
-# Create a spot/preemptible instance handler (equivalent to AWS spot instance handling)
-echo "Creating preemptible instance monitor..."
-sudo cp /tmp/templates/scripts/monitor-preemption /usr/local/bin/monitor-preemption
-sudo chmod 755 /usr/local/bin/monitor-preemption
-
-# Create systemd service for preemption monitoring
-echo "Creating preemption monitor systemd service..."
-sudo cp /tmp/templates/systemd/preemption-monitor.service /etc/systemd/system/preemption-monitor.service
-
-# Enable but don't start the preemption monitor (will be started by user configuration)
-sudo systemctl enable preemption-monitor.service
-
 # Install ops-agent equivalent functionality (basic monitoring without the agent itself)
 echo "Setting up basic system monitoring (ops-agent excluded from v1.0.0)..."
 

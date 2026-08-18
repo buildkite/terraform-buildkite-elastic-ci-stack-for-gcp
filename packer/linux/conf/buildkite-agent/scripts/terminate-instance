@@ -4,8 +4,10 @@ set -euo pipefail
 # Terminate GCP instance gracefully
 echo "--- Terminating GCP instance"
 
-# First, stop the buildkite agent gracefully
-/usr/local/bin/stop-agent-gracefully
+# First, stop the Buildkite agent gracefully. The shutdown helper is also used
+# by GCP as a root-run shutdown script and requires root for its systemd and
+# lock-file operations.
+sudo /usr/local/bin/stop-agent-gracefully
 
 # Get instance information
 PROJECT_ID=$(gcp-metadata project-id 2>/dev/null || echo "unknown")

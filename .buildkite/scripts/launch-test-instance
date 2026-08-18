@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <arch>"
   echo "  arch: x86-64 or arm64"
@@ -58,11 +60,12 @@ echo "Machine:  ${MACHINE_TYPE}"
 # the Terraform module overwrites it via metadata_startup_script. For the test
 # instance we provide a minimal startup script that just invokes the baked-in
 # bootstrap, exactly as Terraform would.
-STARTUP_SCRIPT=$(cat <<'STARTUP'
+STARTUP_SCRIPT_FILE=$(mktemp)
+trap 'rm -f "${STARTUP_SCRIPT_FILE}"' EXIT
+cat >"${STARTUP_SCRIPT_FILE}" <<'STARTUP'
 #!/bin/bash
 exec /usr/local/bin/bootstrap-buildkite-agent
 STARTUP
-)
 
 echo "--- :rocket: Creating GCE instance ${INSTANCE_NAME}"
 
@@ -72,7 +75,8 @@ gcloud compute instances create "$INSTANCE_NAME" \
   --machine-type="$MACHINE_TYPE" \
   --image="$IMAGE_NAME" \
   --image-project="$PROJECT_ID" \
-  --metadata="buildkite-token=${AGENT_TOKEN},buildkite-queue=gcp-image-test,buildkite-enable-secret-manager=false,buildkite-disconnect-after-job=true,startup-script=${STARTUP_SCRIPT}" \
+  --metadata="buildkite-token=${AGENT_TOKEN},buildkite-queue=gcp-image-test,buildkite-enable-secret-manager=false,buildkite-disconnect-after-job=true" \
+  --metadata-from-file="startup-script=${STARTUP_SCRIPT_FILE},shutdown-script=${REPO_ROOT}/packer/linux/conf/buildkite-agent/scripts/stop-agent-gracefully" \
   --max-run-duration="30m" \
   --instance-termination-action="DELETE" \
   --no-service-account \

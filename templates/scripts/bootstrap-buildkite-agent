@@ -122,12 +122,6 @@ sudo systemctl start buildkite-agent
 # before image capture, and these timers are started when each agent boots.
 sudo systemctl enable --now apt-daily.timer apt-daily-upgrade.timer
 
-# Enable and start preemption monitoring if available
-if systemctl list-unit-files | grep -q preemption-monitor; then
-  sudo systemctl enable preemption-monitor
-  sudo systemctl start preemption-monitor
-fi
-
 # Wait a moment for the service to start
 sleep 5
 

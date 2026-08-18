@@ -29,6 +29,7 @@ definitions:
         - "packer/linux/conf/buildkite-agent/hooks/*"
         - "packer/linux/conf/buildkite-agent/scripts/*"
         - "packer/linux/conf/docker/scripts/*"
+        - "tests/*"
 
 env:
   GCP_PROJECT_ID: "buildkite-gcp-stack"
@@ -46,6 +47,7 @@ x-if-changed-patterns:
       - "packer/**"
       - "templates/**"
       - "goss.yaml"
+      - "tests/**"
       - ".buildkite/Dockerfile"
       - ".buildkite/docker-compose.yml"
       - ".buildkite/build-agent-image.yml"
@@ -130,6 +132,12 @@ steps:
         key: shellcheck
         plugins:
           - *shellcheck
+        agents:
+          queue: "gcp"
+
+      - label: ":bash: Lifecycle Script Tests"
+        key: lifecycle-script-tests
+        command: bash tests/stop-agent-gracefully-test
         agents:
           queue: "gcp"
 

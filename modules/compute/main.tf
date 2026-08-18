@@ -52,6 +52,7 @@ resource "google_compute_instance_template" "buildkite_agent" {
     buildkite-queue        = var.buildkite_queue
     buildkite-tags         = var.buildkite_agent_tags
     buildkite-api-endpoint = var.buildkite_api_endpoint
+    shutdown-script        = file("${path.module}/../../packer/linux/conf/buildkite-agent/scripts/stop-agent-gracefully")
   }
 
   metadata_startup_script = templatefile("${path.module}/templates/startup.sh.tftpl", {

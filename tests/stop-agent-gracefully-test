@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly REPO_ROOT
+readonly SCRIPT="${REPO_ROOT}/packer/linux/conf/buildkite-agent/scripts/stop-agent-gracefully"
+TEST_ROOT="$(mktemp -d)"
+readonly TEST_ROOT
+readonly FAKE_BIN="${TEST_ROOT}/bin"
+
+cleanup() {
+  rm -rf "${TEST_ROOT}"
+}
+trap cleanup EXIT
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+assert_contains() {
+  local file="$1"
+  local expected="$2"
+
+  grep -Fq -- "${expected}" "${file}" || fail "${file} does not contain: ${expected}"
+}
+
+assert_not_contains() {
+  local file="$1"
+  local unexpected="$2"
+
+  if grep -Fq -- "${unexpected}" "${file}"; then
+    fail "${file} unexpectedly contains: ${unexpected}"
+  fi
+}
+
+mkdir -p "${FAKE_BIN}"
+
+cat >"${FAKE_BIN}/systemctl" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${CALLS_FILE}"
+exit "${SYSTEMCTL_EXIT:-0}"
+EOF
+
+cat >"${FAKE_BIN}/flock" <<'EOF'
+#!/usr/bin/env bash
+exit "${FLOCK_EXIT:-0}"
+EOF
+
+cat >"${FAKE_BIN}/curl" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${METADATA_FAIL:-false}" == "true" ]]; then
+  exit 22
+fi
+case "${*: -1}" in
+  */preempted) printf '%s' "${METADATA_PREEMPTED:-FALSE}" ;;
+  */scheduling/preemptible) printf '%s' "${METADATA_PREEMPTIBLE:-FALSE}" ;;
+  *) exit 22 ;;
+esac
+EOF
+
+cat >"${FAKE_BIN}/pgrep" <<'EOF'
+#!/usr/bin/env bash
+count=0
+if [[ -f "${PGREP_COUNT_FILE}" ]]; then
+  read -r count <"${PGREP_COUNT_FILE}"
+fi
+count=$((count + 1))
+printf '%s\n' "${count}" >"${PGREP_COUNT_FILE}"
+(( count <= ${PGREP_RUNNING_CALLS:-0} ))
+EOF
+
+cat >"${FAKE_BIN}/date" <<'EOF'
+#!/usr/bin/env bash
+now=0
+if [[ -f "${DATE_COUNT_FILE}" ]]; then
+  read -r now <"${DATE_COUNT_FILE}"
+fi
+now=$((now + 1))
+printf '%s\n' "${now}" >"${DATE_COUNT_FILE}"
+printf '%s\n' "${now}"
+EOF
+
+cat >"${FAKE_BIN}/sleep" <<'EOF'
+#!/usr/bin/env bash
+:
+EOF
+
+chmod +x "${FAKE_BIN}"/*
+
+run_case() {
+  local name="$1"
+  local running_calls="$2"
+  local preempted="$3"
+  local preemptible="$4"
+  local case_dir="${TEST_ROOT}/${name}"
+
+  mkdir -p "${case_dir}"
+  : >"${case_dir}/calls"
+
+  PATH="${FAKE_BIN}:${PATH}" \
+    CALLS_FILE="${case_dir}/calls" \
+    PGREP_COUNT_FILE="${case_dir}/pgrep-count" \
+    DATE_COUNT_FILE="${case_dir}/date-count" \
+    PGREP_RUNNING_CALLS="${running_calls}" \
+    METADATA_PREEMPTED="${preempted}" \
+    METADATA_PREEMPTIBLE="${preemptible}" \
+    METADATA_FAIL="${METADATA_FAIL:-false}" \
+    FLOCK_EXIT="${FLOCK_EXIT:-0}" \
+    SYSTEMCTL_EXIT="${SYSTEMCTL_EXIT:-0}" \
+    BUILDKITE_SHUTDOWN_LOCK_FILE="${case_dir}/shutdown.lock" \
+    BUILDKITE_SHUTDOWN_NORMAL_GRACE_PERIOD=3 \
+    BUILDKITE_SHUTDOWN_SPOT_GRACE_PERIOD=1 \
+    BUILDKITE_SHUTDOWN_FORCE_PERIOD=2 \
+    bash "${SCRIPT}" >"${case_dir}/output" 2>&1
+}
+
+run_case already-stopped 0 FALSE FALSE
+assert_contains "${TEST_ROOT}/already-stopped/calls" "--no-block stop buildkite-agent.service"
+assert_not_contains "${TEST_ROOT}/already-stopped/calls" "SIGQUIT"
+assert_contains "${TEST_ROOT}/already-stopped/output" "stopped gracefully"
+
+run_case normal-graceful 3 FALSE FALSE
+assert_contains "${TEST_ROOT}/normal-graceful/output" "standard VM shutdown budget (3s graceful)"
+assert_not_contains "${TEST_ROOT}/normal-graceful/calls" "SIGQUIT"
+
+run_case normal-forced 20 FALSE FALSE
+assert_contains "${TEST_ROOT}/normal-forced/output" "Graceful shutdown deadline reached"
+assert_contains "${TEST_ROOT}/normal-forced/calls" "kill --kill-who=main --signal=SIGQUIT buildkite-agent.service"
+
+run_case spot-forced 20 TRUE TRUE
+assert_contains "${TEST_ROOT}/spot-forced/output" "Spot/preemptible shutdown budget (1s graceful)"
+assert_contains "${TEST_ROOT}/spot-forced/calls" "kill --kill-who=main --signal=SIGQUIT buildkite-agent.service"
+
+METADATA_FAIL=true run_case metadata-failure 0 FALSE FALSE
+assert_contains "${TEST_ROOT}/metadata-failure/output" "unable to determine VM provisioning model"
+assert_contains "${TEST_ROOT}/metadata-failure/output" "shorter shutdown budget (1s graceful)"
+
+FLOCK_EXIT=1 run_case concurrent-invocation 20 FALSE FALSE
+assert_contains "${TEST_ROOT}/concurrent-invocation/output" "shutdown is already in progress"
+if [[ -s "${TEST_ROOT}/concurrent-invocation/calls" ]]; then
+  fail "concurrent invocation called systemctl"
+fi
+
+SYSTEMCTL_EXIT=1 run_case systemctl-failure 0 FALSE FALSE
+assert_contains "${TEST_ROOT}/systemctl-failure/output" "unable to request a graceful"
+
+echo "PASS: stop-agent-gracefully"

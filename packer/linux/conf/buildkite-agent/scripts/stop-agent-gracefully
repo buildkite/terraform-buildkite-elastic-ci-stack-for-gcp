@@ -1,35 +1,96 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Gracefully stop the Buildkite agent
-echo "--- Gracefully stopping Buildkite agent"
+# GCP runs shutdown scripts as root. The copy installed in /usr/local/bin is
+# also intended to be invoked by root lifecycle services.
+metadata_value() {
+  local path="$1"
 
-# Get the currently running jobs
-RUNNING_JOBS=$(buildkite-agent-stable meta-data get "jobs" --default="" 2>/dev/null || echo "")
+  curl --fail --silent --show-error \
+    --connect-timeout 1 \
+    --max-time 1 \
+    --header "Metadata-Flavor: Google" \
+    "http://metadata.google.internal/computeMetadata/v1/instance/${path}"
+}
 
-if [[ -n "$RUNNING_JOBS" ]]; then
-  echo "Waiting for running jobs to complete: $RUNNING_JOBS"
+agent_is_running() {
+  pgrep --uid buildkite-agent --exact buildkite-agent >/dev/null 2>&1
+}
 
-  # Wait up to 10 minutes for jobs to complete
-  TIMEOUT=600
-  ELAPSED=0
+wait_for_agent() {
+  local timeout_seconds="$1"
+  local deadline=$(( $(date +%s) + timeout_seconds ))
 
-  while [[ $ELAPSED -lt $TIMEOUT ]]; do
-    if ! pgrep -f "buildkite-agent.*start" > /dev/null; then
-      echo "Agent is no longer running, exiting gracefully"
-      exit 0
-    fi
-
-    sleep 10
-    ELAPSED=$((ELAPSED + 10))
-    echo "Waiting for jobs to complete... (${ELAPSED}s elapsed)"
+  while agent_is_running && (( $(date +%s) < deadline )); do
+    sleep 1
   done
 
-  echo "Timeout reached, forcing shutdown"
+  ! agent_is_running
+}
+
+readonly LOCK_FILE="${BUILDKITE_SHUTDOWN_LOCK_FILE:-/run/lock/buildkite-agent-shutdown.lock}"
+readonly NORMAL_GRACEFUL_TIMEOUT_SECONDS="${BUILDKITE_SHUTDOWN_NORMAL_GRACE_PERIOD:-100}"
+readonly SPOT_GRACEFUL_TIMEOUT_SECONDS="${BUILDKITE_SHUTDOWN_SPOT_GRACE_PERIOD:-10}"
+readonly FORCEFUL_TIMEOUT_SECONDS="${BUILDKITE_SHUTDOWN_FORCE_PERIOD:-10}"
+
+# A kernel-backed flock is released even if the first invocation is killed,
+# avoiding a stale marker that could suppress a later shutdown attempt.
+exec 9>"${LOCK_FILE}"
+if ! flock --nonblock 9; then
+  echo "--- Buildkite agent shutdown is already in progress"
+  exit 0
 fi
 
-# Stop the systemd service
-echo "Stopping buildkite-agent service"
-sudo systemctl stop buildkite-agent || true
+echo "--- Gracefully stopping Buildkite agent"
 
-echo "Buildkite agent stopped gracefully"
+# Spot and legacy preemptible VMs receive a best-effort shutdown period of up
+# to 30 seconds. Standard VMs receive up to 120 seconds. During an actual
+# preemption, instance/preempted is TRUE; scheduling/preemptible also lets us
+# use the shorter budget when a Spot/preemptible VM is stopped for another
+# reason. If metadata is unavailable, conservatively use the shorter budget.
+preempted_known=false
+if preempted="$(metadata_value preempted 2>/dev/null)"; then
+  preempted_known=true
+fi
+preemptible_known=false
+if preemptible="$(metadata_value scheduling/preemptible 2>/dev/null)"; then
+  preemptible_known=true
+fi
+
+if [[ "${preempted^^}" == "TRUE" || "${preemptible^^}" == "TRUE" ]]; then
+  graceful_timeout_seconds="${SPOT_GRACEFUL_TIMEOUT_SECONDS}"
+  echo "Using Spot/preemptible shutdown budget (${graceful_timeout_seconds}s graceful)"
+elif [[ "${preempted_known}" == "true" && "${preemptible_known}" == "true" ]]; then
+  graceful_timeout_seconds="${NORMAL_GRACEFUL_TIMEOUT_SECONDS}"
+  echo "Using standard VM shutdown budget (${graceful_timeout_seconds}s graceful)"
+else
+  graceful_timeout_seconds="${SPOT_GRACEFUL_TIMEOUT_SECONDS}"
+  echo "Warning: unable to determine VM provisioning model; using shorter shutdown budget (${graceful_timeout_seconds}s graceful)" >&2
+fi
+
+# A systemd stop sends SIGTERM to the main agent process. Buildkite Agent treats
+# the first SIGTERM as a graceful stop: it stops accepting work, lets any active
+# job finish, disconnects, and exits. --no-block is essential because the unit's
+# TimeoutStopSec=0 would otherwise make this shutdown script wait indefinitely.
+if ! systemctl --no-block stop buildkite-agent.service; then
+  echo "Warning: unable to request a graceful buildkite-agent service stop" >&2
+fi
+
+if wait_for_agent "${graceful_timeout_seconds}"; then
+  echo "All Buildkite agent processes stopped gracefully"
+  exit 0
+fi
+
+# The agent is still running near the provider deadline. SIGQUIT asks it to
+# cancel active work and disconnect, matching the AWS stack's forced cleanup
+# behavior before an involuntary termination.
+echo "Graceful shutdown deadline reached; sending SIGQUIT to Buildkite agent"
+if ! systemctl kill --kill-who=main --signal=SIGQUIT buildkite-agent.service; then
+  echo "Warning: unable to send SIGQUIT to buildkite-agent service" >&2
+fi
+
+if wait_for_agent "${FORCEFUL_TIMEOUT_SECONDS}"; then
+  echo "Buildkite agent stopped after SIGQUIT"
+else
+  echo "Warning: Buildkite agent is still running; GCP will complete VM shutdown" >&2
+fi

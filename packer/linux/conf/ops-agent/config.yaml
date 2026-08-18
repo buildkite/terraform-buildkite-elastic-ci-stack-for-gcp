@@ -5,7 +5,6 @@
 # - Application logs: Buildkite agent, Docker (when installed)
 # - System logs: syslog, auth.log
 # - Cloud initialization logs: cloud-init
-# - Preemption monitoring: preemption-monitor service
 #
 # All logs are tagged with the instance name and sent to Cloud Logging
 
@@ -22,12 +21,6 @@ logging:
       type: files
       include_paths:
         - /var/log/docker.log
-      record_log_file_path: true
-
-    preemption_monitor:
-      type: files
-      include_paths:
-        - /var/log/preemption-monitor.log
       record_log_file_path: true
 
     # System Logs
@@ -98,7 +91,6 @@ logging:
           - syslog
           - auth_log
           - docker_daemon
-          - preemption_monitor
           - cloud_init
           - cloud_init_output
           - ops_agent_logs
