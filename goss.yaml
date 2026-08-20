@@ -413,6 +413,13 @@ command:
     stdout:
       - /User=buildkite-agent/
 
+  # Stopping the service must signal only the agent process. Signaling the
+  # whole control group would also terminate the active job being drained.
+  systemctl show buildkite-agent.service --property=KillMode:
+    exit-status: 0
+    stdout:
+      - /KillMode=process/
+
   # ---------------------------------------------------------------------------
   # GCP-specific service checks
   # ---------------------------------------------------------------------------
