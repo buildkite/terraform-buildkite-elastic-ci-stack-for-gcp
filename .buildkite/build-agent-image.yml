@@ -71,7 +71,9 @@ steps:
     steps:
       - label: ":terraform: Format Check"
         key: terraform-fmt
-        if_changed: "**/*.tf"
+        if_changed:
+          - "**/*.tf"
+          - "**/*.tftest.hcl"
         command: .buildkite/scripts/format_check
         plugins:
           - *terraform_docker
@@ -84,6 +86,19 @@ steps:
           - "**/*.tf"
           - "**/*.tfvars"
         command: .buildkite/scripts/validate
+        plugins:
+          - *terraform_docker
+        agents:
+          queue: "gcp"
+
+      - label: ":terraform: Test Modules"
+        key: terraform-test-modules
+        if_changed:
+          - "**/*.tf"
+          - "**/*.tfvars"
+          - "**/*.tftest.hcl"
+          - ".buildkite/scripts/test_terraform"
+        command: .buildkite/scripts/test_terraform
         plugins:
           - *terraform_docker
         agents:

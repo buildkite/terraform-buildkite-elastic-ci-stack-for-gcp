@@ -378,7 +378,7 @@ variable "health_check_initial_delay_sec" {
 # Update Policy Configuration
 
 variable "max_surge" {
-  description = "Maximum number of instances that can be created above target size during rolling updates"
+  description = "Maximum number of instances that can be created above target size during an explicitly started rolling update. Instance template changes are not rolled out proactively."
   type        = number
   default     = 3
 
@@ -389,7 +389,7 @@ variable "max_surge" {
 }
 
 variable "max_unavailable" {
-  description = "Maximum number of instances that can be unavailable during rolling updates"
+  description = "Maximum number of instances that can be unavailable during an explicitly started rolling update. Instance template changes are not rolled out proactively."
   type        = number
   default     = 0
 
