@@ -18,17 +18,24 @@ reach existing agents immediately, explicitly update instances only after they
 are idle; otherwise allow normal instance recycling to adopt it without
 interrupting jobs.
 
-The `max_surge` and `max_unavailable` settings apply when an operator explicitly
-starts a rolling update, for example with `gcloud compute instance-groups
-managed rolling-action start-update`. That command changes the live MIG update
-policy and creates temporary Terraform drift, so do not run `terraform apply`
-until the rolling update has finished. The next apply restores the configured
-opportunistic policy.
+The `max_surge` and `max_unavailable` settings do not cause an opportunistic
+template update to roll out automatically. To preserve these limits when
+explicitly starting a rolling update with `gcloud compute instance-groups
+managed rolling-action start-update`, pass both values explicitly with
+`--max-surge` and `--max-unavailable`. If omitted for this stack's stateless
+regional MIG, gcloud defaults both values to the number of zones rather than
+reusing the Terraform settings. For a stateful MIG, omitted `--max-surge`
+instead defaults to `0`; omitted `--max-unavailable` still defaults to the
+number of zones.
 
-These settings do not cause an opportunistic template update to roll out
-automatically, and they do not limit a selective `update-instances` request
-targeting named VMs. Prefer `update-instances` when you have identified specific
-idle agents to recycle.
+Starting a rolling update changes the live MIG update policy and creates
+temporary Terraform drift, so do not run `terraform apply` until the rolling
+update has finished. The next apply restores the configured opportunistic
+policy.
+
+These settings do not limit a selective `update-instances` request targeting
+named VMs. Prefer `update-instances` when you have identified specific idle
+agents to recycle.
 
 Disabling proactive redistribution can temporarily leave instances unevenly
 distributed between zones after instance removal. The regional group still
