@@ -4,21 +4,25 @@ definitions:
       image: "hashicorp/terraform:1.13"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   tflint: &tflint
     docker#v5.14.0:
       image: "ghcr.io/terraform-linters/tflint:v0.59.1"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   tfsec: &tfsec
     docker#v5.14.0:
       image: "aquasec/tfsec:v1.28"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   packer: &packer
     docker#v5.14.0:
       image: "hashicorp/packer:1.11"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   shellcheck: &shellcheck
     shellcheck#v1.4.0:
       files:
