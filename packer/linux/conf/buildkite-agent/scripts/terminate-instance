@@ -1,37 +1,144 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Terminate GCP instance gracefully
-echo "--- Terminating GCP instance"
+# This image-baked primitive is intentionally dormant. Before wiring it into an
+# agent lifecycle, the caller must stop the agent and grant the VM permission to
+# update its managed instance group.
+readonly METADATA_URL="${GCP_METADATA_URL:-http://metadata.google.internal/computeMetadata/v1}"
+readonly MAX_ATTEMPTS="${BUILDKITE_TERMINATION_MAX_ATTEMPTS:-4}"
+readonly RETRY_BASE_SECONDS="${BUILDKITE_TERMINATION_RETRY_BASE_SECONDS:-2}"
+readonly GCLOUD_TIMEOUT_SECONDS="${BUILDKITE_TERMINATION_GCLOUD_TIMEOUT_SECONDS:-30}"
 
-# First, stop the Buildkite agent gracefully. The shutdown helper is also used
-# by GCP as a root-run shutdown script and requires root for its systemd and
-# lock-file operations.
-sudo /usr/local/bin/stop-agent-gracefully
+metadata_value() {
+  local path="$1"
 
-# Get instance information
-PROJECT_ID=$(gcp-metadata project-id 2>/dev/null || echo "unknown")
-ZONE=$(gcp-metadata zone 2>/dev/null || echo "unknown")
-INSTANCE_NAME=$(gcp-metadata instance-name 2>/dev/null || echo "unknown")
+  curl --fail --silent --show-error \
+    --connect-timeout 1 \
+    --max-time 2 \
+    --header "Metadata-Flavor: Google" \
+    "${METADATA_URL}/${path}"
+}
 
-echo "Instance details:"
-echo "  Project: $PROJECT_ID"
-echo "  Zone: $ZONE"
-echo "  Instance: $INSTANCE_NAME"
+validate_configuration() {
+  if ! [[ "${MAX_ATTEMPTS}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "BUILDKITE_TERMINATION_MAX_ATTEMPTS must be a positive integer" >&2
+    return 1
+  fi
+  if ! [[ "${RETRY_BASE_SECONDS}" =~ ^[0-9]+$ ]]; then
+    echo "BUILDKITE_TERMINATION_RETRY_BASE_SECONDS must be a non-negative integer" >&2
+    return 1
+  fi
+  if ! [[ "${GCLOUD_TIMEOUT_SECONDS}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "BUILDKITE_TERMINATION_GCLOUD_TIMEOUT_SECONDS must be a positive integer" >&2
+    return 1
+  fi
+}
 
-# Log the termination request
-logger "Buildkite agent requesting instance termination: $INSTANCE_NAME"
+read_instance_identity() {
+  local attempt delay
 
-# We'll need to determine the appropriate method for terminating the instance
-# For now, we'll just prepare the system for shutdown
-echo "Preparing system for termination..."
+  for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
+    if project_id="$(metadata_value project/project-id)" &&
+      instance_name="$(metadata_value instance/name)" &&
+      created_by="$(metadata_value instance/attributes/created-by)"; then
+      return 0
+    fi
 
-# Clean up any remaining processes
-sudo pkill -f buildkite-agent || true
+    if ((attempt < MAX_ATTEMPTS)); then
+      delay=$((RETRY_BASE_SECONDS * (2 ** (attempt - 1))))
+      echo "Unable to read instance metadata (attempt ${attempt}/${MAX_ATTEMPTS}); retrying in ${delay}s" >&2
+      sleep "${delay}"
+    fi
+  done
 
-# Sync filesystem
-sync
+  echo "Unable to read instance identity after ${MAX_ATTEMPTS} attempts" >&2
+  return 1
+}
 
-echo "Instance ready for termination"
-echo "Note: Actual GCP instance termination should be handled by external tooling"
-echo "      with proper authentication and permissions."
+parse_regional_mig() {
+  local manager_path="$1"
+
+  if [[ "${manager_path}" =~ ^projects/[^/]+/regions/([^/]+)/instanceGroupManagers/([^/]+)$ ]]; then
+    region="${BASH_REMATCH[1]}"
+    instance_group_manager="${BASH_REMATCH[2]}"
+    return 0
+  fi
+
+  echo "Instance created-by metadata does not identify a regional managed instance group: ${manager_path}" >&2
+  return 1
+}
+
+delete_exact_instance() {
+  local status
+
+  if ! status="$(
+    timeout --kill-after=5s "${GCLOUD_TIMEOUT_SECONDS}s" \
+      gcloud compute instance-groups managed delete-instances "${instance_group_manager}" \
+      --project="${project_id}" \
+      --region="${region}" \
+      --instances="${instance_name}" \
+      --skip-instances-on-validation-error \
+      --quiet \
+      --format='value(status)'
+  )"; then
+    return 1
+  fi
+
+  status="${status//$'\r'/}"
+  case "${status}" in
+  SUCCESS)
+    echo "GCP accepted deletion of ${instance_name} from ${instance_group_manager}"
+    return 0
+    ;;
+  "")
+    echo "GCP returned no deletion status for ${instance_name}" >&2
+    return 1
+    ;;
+  SKIPPED | MEMBER_NOT_FOUND)
+    echo "Instance ${instance_name} is already absent or being removed from ${instance_group_manager} (${status})"
+    return 0
+    ;;
+  *)
+    echo "GCP did not delete ${instance_name} from ${instance_group_manager} (status: ${status:-missing})" >&2
+    return 1
+    ;;
+  esac
+}
+
+request_termination() {
+  local attempt delay
+
+  for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
+    if delete_exact_instance; then
+      return 0
+    fi
+
+    if ((attempt < MAX_ATTEMPTS)); then
+      delay=$((RETRY_BASE_SECONDS * (2 ** (attempt - 1))))
+      echo "Unable to delete instance (attempt ${attempt}/${MAX_ATTEMPTS}); retrying in ${delay}s" >&2
+      sleep "${delay}"
+    fi
+  done
+
+  echo "Unable to delete instance after ${MAX_ATTEMPTS} attempts" >&2
+  return 1
+}
+
+main() {
+  echo "--- Requesting exact GCP managed instance group removal"
+
+  validate_configuration
+  read_instance_identity
+  parse_regional_mig "${created_by}"
+
+  echo "Instance details:"
+  echo "  Project: ${project_id}"
+  echo "  Region: ${region}"
+  echo "  Managed instance group: ${instance_group_manager}"
+  echo "  Instance: ${instance_name}"
+  logger --tag buildkite-agent "Requesting removal of ${instance_name} from regional managed instance group ${instance_group_manager}"
+
+  request_termination
+}
+
+main "$@"

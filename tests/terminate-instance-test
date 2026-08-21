@@ -1,0 +1,217 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly REPO_ROOT
+readonly SCRIPT="${REPO_ROOT}/packer/linux/conf/buildkite-agent/scripts/terminate-instance"
+TEST_ROOT="$(mktemp -d)"
+readonly TEST_ROOT
+readonly FAKE_BIN="${TEST_ROOT}/bin"
+
+cleanup() {
+  rm -rf "${TEST_ROOT}"
+}
+trap cleanup EXIT
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+assert_contains() {
+  local file="$1"
+  local expected="$2"
+
+  grep -Fq -- "${expected}" "${file}" || fail "${file} does not contain: ${expected}"
+}
+
+assert_not_contains() {
+  local file="$1"
+  local unexpected="$2"
+
+  if grep -Fq -- "${unexpected}" "${file}"; then
+    fail "${file} unexpectedly contains: ${unexpected}"
+  fi
+}
+
+assert_line_count() {
+  local file="$1"
+  local expected="$2"
+  local actual
+
+  actual="$(wc -l <"${file}" | tr -d ' ')"
+  [[ "${actual}" == "${expected}" ]] || fail "${file} contains ${actual} lines, expected ${expected}"
+}
+
+mkdir -p "${FAKE_BIN}"
+
+cat >"${FAKE_BIN}/curl" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${CURL_CALLS_FILE}"
+
+count=0
+if [[ -f "${CURL_COUNT_FILE}" ]]; then
+  read -r count <"${CURL_COUNT_FILE}"
+fi
+count=$((count + 1))
+printf '%s\n' "${count}" >"${CURL_COUNT_FILE}"
+
+if (( count <= ${METADATA_FAILURE_CALLS:-0} )); then
+  exit 22
+fi
+
+case "${*: -1}" in
+  */project/project-id) printf '%s' "${METADATA_PROJECT_ID:-test-project}" ;;
+  */instance/name) printf '%s' "${METADATA_INSTANCE_NAME:-test-agent-abcd}" ;;
+  */instance/attributes/created-by)
+    printf '%s' "${METADATA_CREATED_BY:-projects/123456789/regions/us-central1/instanceGroupManagers/test-mig}"
+    ;;
+  *) exit 22 ;;
+esac
+EOF
+
+cat >"${FAKE_BIN}/gcloud" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${GCLOUD_CALLS_FILE}"
+
+count=0
+if [[ -f "${GCLOUD_COUNT_FILE}" ]]; then
+  read -r count <"${GCLOUD_COUNT_FILE}"
+fi
+count=$((count + 1))
+printf '%s\n' "${count}" >"${GCLOUD_COUNT_FILE}"
+
+IFS=',' read -r -a statuses <<<"${GCLOUD_STATUSES:-SUCCESS}"
+IFS=',' read -r -a exit_codes <<<"${GCLOUD_EXIT_CODES:-0}"
+index=$((count - 1))
+if (( index >= ${#statuses[@]} )); then
+  index=$((${#statuses[@]} - 1))
+fi
+exit_index=$((count - 1))
+if (( exit_index >= ${#exit_codes[@]} )); then
+  exit_index=$((${#exit_codes[@]} - 1))
+fi
+
+if [[ "${GCLOUD_EMPTY_STATUS:-false}" != "true" ]]; then
+  printf '%s\n' "${statuses[${index}]}"
+fi
+exit "${exit_codes[${exit_index}]}"
+EOF
+
+cat >"${FAKE_BIN}/timeout" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${TIMEOUT_CALLS_FILE}"
+shift 2
+exec "$@"
+EOF
+
+cat >"${FAKE_BIN}/sleep" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${SLEEP_CALLS_FILE}"
+EOF
+
+cat >"${FAKE_BIN}/logger" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${LOGGER_CALLS_FILE}"
+EOF
+
+chmod +x "${FAKE_BIN}"/*
+
+run_case() {
+  local name="$1"
+  local expected_exit="${2:-0}"
+  local case_dir="${TEST_ROOT}/${name}"
+  local actual_exit
+
+  mkdir -p "${case_dir}"
+  : >"${case_dir}/curl-calls"
+  : >"${case_dir}/gcloud-calls"
+  : >"${case_dir}/timeout-calls"
+  : >"${case_dir}/sleep-calls"
+  : >"${case_dir}/logger-calls"
+
+  set +e
+  PATH="${FAKE_BIN}:${PATH}" \
+    CURL_CALLS_FILE="${case_dir}/curl-calls" \
+    CURL_COUNT_FILE="${case_dir}/curl-count" \
+    GCLOUD_CALLS_FILE="${case_dir}/gcloud-calls" \
+    GCLOUD_COUNT_FILE="${case_dir}/gcloud-count" \
+    TIMEOUT_CALLS_FILE="${case_dir}/timeout-calls" \
+    SLEEP_CALLS_FILE="${case_dir}/sleep-calls" \
+    LOGGER_CALLS_FILE="${case_dir}/logger-calls" \
+    BUILDKITE_TERMINATION_MAX_ATTEMPTS="${MAX_ATTEMPTS:-4}" \
+    BUILDKITE_TERMINATION_RETRY_BASE_SECONDS=2 \
+    BUILDKITE_TERMINATION_GCLOUD_TIMEOUT_SECONDS=30 \
+    METADATA_FAILURE_CALLS="${METADATA_FAILURE_CALLS:-0}" \
+    METADATA_PROJECT_ID="${METADATA_PROJECT_ID:-test-project}" \
+    METADATA_INSTANCE_NAME="${METADATA_INSTANCE_NAME:-test-agent-abcd}" \
+    METADATA_CREATED_BY="${METADATA_CREATED_BY:-projects/123456789/regions/us-central1/instanceGroupManagers/test-mig}" \
+    GCLOUD_STATUSES="${GCLOUD_STATUSES:-SUCCESS}" \
+    GCLOUD_EXIT_CODES="${GCLOUD_EXIT_CODES:-0}" \
+    GCLOUD_EMPTY_STATUS="${GCLOUD_EMPTY_STATUS:-false}" \
+    bash "${SCRIPT}" >"${case_dir}/output" 2>&1
+  actual_exit=$?
+  set -e
+
+  [[ "${actual_exit}" == "${expected_exit}" ]] || {
+    cat "${case_dir}/output" >&2
+    fail "${name} exited ${actual_exit}, expected ${expected_exit}"
+  }
+}
+
+run_case success
+assert_contains "${TEST_ROOT}/success/gcloud-calls" "compute instance-groups managed delete-instances test-mig"
+assert_contains "${TEST_ROOT}/success/gcloud-calls" "--project=test-project"
+assert_contains "${TEST_ROOT}/success/gcloud-calls" "--region=us-central1"
+assert_contains "${TEST_ROOT}/success/gcloud-calls" "--instances=test-agent-abcd"
+assert_contains "${TEST_ROOT}/success/gcloud-calls" "--skip-instances-on-validation-error"
+assert_contains "${TEST_ROOT}/success/gcloud-calls" "--quiet"
+assert_contains "${TEST_ROOT}/success/gcloud-calls" "--format=value(status)"
+assert_not_contains "${TEST_ROOT}/success/gcloud-calls" "compute instances delete"
+assert_contains "${TEST_ROOT}/success/timeout-calls" "--kill-after=5s 30s gcloud"
+assert_contains "${TEST_ROOT}/success/logger-calls" "Requesting removal of test-agent-abcd from regional managed instance group test-mig"
+assert_contains "${TEST_ROOT}/success/output" "GCP accepted deletion of test-agent-abcd from test-mig"
+
+GCLOUD_STATUSES=SKIPPED run_case already-deleting
+assert_contains "${TEST_ROOT}/already-deleting/output" "already absent or being removed"
+
+GCLOUD_STATUSES=MEMBER_NOT_FOUND run_case already-absent
+assert_contains "${TEST_ROOT}/already-absent/output" "MEMBER_NOT_FOUND"
+
+MAX_ATTEMPTS=2 GCLOUD_EMPTY_STATUS=true run_case empty-status 1
+assert_line_count "${TEST_ROOT}/empty-status/gcloud-calls" 2
+assert_contains "${TEST_ROOT}/empty-status/output" "GCP returned no deletion status"
+
+GCLOUD_STATUSES=FAIL,FAIL,SUCCESS run_case transient-status
+assert_line_count "${TEST_ROOT}/transient-status/gcloud-calls" 3
+grep -Fxq "2" "${TEST_ROOT}/transient-status/sleep-calls" || fail "first retry delay was not 2 seconds"
+grep -Fxq "4" "${TEST_ROOT}/transient-status/sleep-calls" || fail "second retry delay was not 4 seconds"
+
+GCLOUD_STATUSES=SUCCESS,SUCCESS GCLOUD_EXIT_CODES=1,0 run_case transient-command-failure
+assert_line_count "${TEST_ROOT}/transient-command-failure/gcloud-calls" 2
+
+MAX_ATTEMPTS=3 GCLOUD_STATUSES=FAIL run_case retry-exhaustion 1
+assert_line_count "${TEST_ROOT}/retry-exhaustion/gcloud-calls" 3
+assert_contains "${TEST_ROOT}/retry-exhaustion/output" "Unable to delete instance after 3 attempts"
+
+METADATA_FAILURE_CALLS=1 run_case transient-metadata
+assert_line_count "${TEST_ROOT}/transient-metadata/gcloud-calls" 1
+assert_contains "${TEST_ROOT}/transient-metadata/output" "Unable to read instance metadata (attempt 1/4)"
+
+MAX_ATTEMPTS=2 METADATA_FAILURE_CALLS=20 run_case metadata-exhaustion 1
+assert_line_count "${TEST_ROOT}/metadata-exhaustion/gcloud-calls" 0
+assert_contains "${TEST_ROOT}/metadata-exhaustion/output" "Unable to read instance identity after 2 attempts"
+
+METADATA_CREATED_BY=projects/123456789/zones/us-central1-a/instanceGroupManagers/test-mig run_case zonal-manager 1
+assert_line_count "${TEST_ROOT}/zonal-manager/gcloud-calls" 0
+assert_contains "${TEST_ROOT}/zonal-manager/output" "does not identify a regional managed instance group"
+
+METADATA_CREATED_BY=invalid run_case malformed-manager 1
+assert_line_count "${TEST_ROOT}/malformed-manager/gcloud-calls" 0
+assert_contains "${TEST_ROOT}/malformed-manager/output" "does not identify a regional managed instance group"
+
+MAX_ATTEMPTS=0 run_case invalid-attempt-count 1
+assert_line_count "${TEST_ROOT}/invalid-attempt-count/curl-calls" 0
+assert_contains "${TEST_ROOT}/invalid-attempt-count/output" "MAX_ATTEMPTS must be a positive integer"
+
+echo "PASS: terminate-instance"

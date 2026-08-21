@@ -160,6 +160,12 @@ steps:
         agents:
           queue: "gcp"
 
+      - label: ":bash: Termination Script Tests"
+        key: termination-script-tests
+        command: bash tests/terminate-instance-test
+        agents:
+          queue: "gcp"
+
   - group: ":terraform: Examples"
     key: terraform-example-checks
     steps:

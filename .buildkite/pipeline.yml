@@ -29,6 +29,8 @@ definitions:
       files:
         - ".buildkite/scripts/*"
         - "packer/linux/scripts/*.sh"
+        - "packer/linux/conf/buildkite-agent/scripts/*"
+        - "tests/*"
 
 steps:
   - group: ":terraform: Root Modules"
@@ -106,6 +108,18 @@ steps:
         key: shellcheck
         plugins:
           - *shellcheck
+
+      - label: ":bash: Lifecycle Script Tests"
+        key: lifecycle-script-tests
+        command: bash tests/stop-agent-gracefully-test
+        agents:
+          queue: "gcp"
+
+      - label: ":bash: Termination Script Tests"
+        key: termination-script-tests
+        command: bash tests/terminate-instance-test
+        agents:
+          queue: "gcp"
 
   - group: "📖 Docs and Examples"
     steps:
