@@ -87,9 +87,12 @@ resource "google_compute_region_instance_group_manager" "buildkite_agents" {
 
   distribution_policy_zones = var.zones
 
+  # Apply new instance templates only when the MIG creates or otherwise
+  # replaces an instance. Proactive updates and redistribution could select an
+  # agent that is still running a job.
   update_policy {
-    type                         = "PROACTIVE"
-    instance_redistribution_type = "PROACTIVE"
+    type                         = "OPPORTUNISTIC"
+    instance_redistribution_type = "NONE"
     minimal_action               = "REPLACE"
     max_surge_fixed              = var.max_surge
     max_unavailable_fixed        = var.max_unavailable

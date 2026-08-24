@@ -4,21 +4,25 @@ definitions:
       image: "hashicorp/terraform:1.13"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   tflint: &tflint
     docker#v5.14.0:
       image: "ghcr.io/terraform-linters/tflint:v0.59.1"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   tfsec: &tfsec
     docker#v5.14.0:
       image: "aquasec/tfsec:v1.28"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   packer: &packer
     docker#v5.14.0:
       image: "hashicorp/packer:1.11"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   shellcheck: &shellcheck
     shellcheck#v1.4.0:
       files:
@@ -71,7 +75,9 @@ steps:
     steps:
       - label: ":terraform: Format Check"
         key: terraform-fmt
-        if_changed: "**/*.tf"
+        if_changed:
+          - "**/*.tf"
+          - "**/*.tftest.hcl"
         command: .buildkite/scripts/format_check
         plugins:
           - *terraform_docker
@@ -84,6 +90,19 @@ steps:
           - "**/*.tf"
           - "**/*.tfvars"
         command: .buildkite/scripts/validate
+        plugins:
+          - *terraform_docker
+        agents:
+          queue: "gcp"
+
+      - label: ":terraform: Test Modules"
+        key: terraform-test-modules
+        if_changed:
+          - "**/*.tf"
+          - "**/*.tfvars"
+          - "**/*.tftest.hcl"
+          - ".buildkite/scripts/test_terraform"
+        command: .buildkite/scripts/test_terraform
         plugins:
           - *terraform_docker
         agents:

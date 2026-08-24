@@ -35,7 +35,10 @@ steps:
     steps:
       - label: ":terraform: Format Check"
         key: terraform-fmt
-        if_changed: "*.tf"
+        if_changed:
+          - "*.tf"
+          - "**/*.tf"
+          - "**/*.tftest.hcl"
         command: .buildkite/scripts/format_check
         plugins:
           - *terraform_docker
@@ -45,20 +48,40 @@ steps:
         if_changed:
           - "*.tf"
           - "*.tfvars"
+          - "**/*.tf"
+          - "**/*.tfvars"
         command: .buildkite/scripts/validate
+        plugins:
+          - *terraform_docker
+
+      - label: ":terraform: Test Modules"
+        key: terraform-test-modules
+        if_changed:
+          - "*.tf"
+          - "*.tfvars"
+          - "*.tftest.hcl"
+          - "**/*.tf"
+          - "**/*.tfvars"
+          - "**/*.tftest.hcl"
+          - ".buildkite/scripts/test_terraform"
+        command: .buildkite/scripts/test_terraform
         plugins:
           - *terraform_docker
 
       - label: ":lint-roller: TFLint"
         key: tflint
-        if_changed: "*.tf"
+        if_changed:
+          - "*.tf"
+          - "**/*.tf"
         command: .buildkite/scripts/tflint
         plugins:
           - *tflint
 
       - label: ":shield: TFSec Security Scan"
         key: tfsec
-        if_changed: "*.tf"
+        if_changed:
+          - "*.tf"
+          - "**/*.tf"
         command: .buildkite/scripts/tfsec
         plugins:
           - *tfsec
@@ -95,6 +118,8 @@ steps:
 
       - label: ":markdown: Markdown Lint"
         key: markdownlint
-        if_changed: "*.md"
+        if_changed:
+          - "*.md"
+          - "**/*.md"
         plugins:
           - *markdownlint

@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+echo "Running Terraform tests..."
+
+test_files=$(find . -type f -name '*.tftest.hcl' -not -path '*/.terraform/*' -print)
+if [ -z "${test_files}" ]; then
+  echo "No Terraform test files found" >&2
+  exit 1
+fi
+
+mapped_dirs=$(
+  printf '%s\n' "${test_files}" \
+    | sed -e 's|/tests/[^/]*$||' -e 's|/[^/]*\.tftest\.hcl$||'
+)
+module_dirs=$(printf '%s\n' "${mapped_dirs}" | sort -u)
+
+while IFS= read -r module_dir; do
+  echo "Testing ${module_dir}..."
+  terraform -chdir="${module_dir}" init -backend=false -input=false </dev/null
+  terraform -chdir="${module_dir}" test </dev/null
+done <<EOF
+${module_dirs}
+EOF
+
+echo "✅ Terraform tests passed"
