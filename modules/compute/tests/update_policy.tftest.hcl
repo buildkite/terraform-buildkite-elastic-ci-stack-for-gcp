@@ -39,11 +39,11 @@ run "uses_non_disruptive_update_policy" {
 
   assert {
     condition     = google_compute_region_instance_group_manager.buildkite_agents.update_policy[0].max_surge_fixed == 5
-    error_message = "Explicit rolling updates must retain the configured surge capacity."
+    error_message = "The managed instance group update policy must store the configured maximum surge capacity."
   }
 
   assert {
     condition     = google_compute_region_instance_group_manager.buildkite_agents.update_policy[0].max_unavailable_fixed == 1
-    error_message = "Explicit rolling updates must not make existing agents unavailable before their replacements are ready."
+    error_message = "The managed instance group update policy must store the configured maximum unavailable capacity."
   }
 }
