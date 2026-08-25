@@ -46,17 +46,24 @@ resource "google_compute_instance_template" "buildkite_agent" {
   }
 
   metadata = {
-    enable-oslogin         = "FALSE"
-    buildkite-token        = var.buildkite_agent_token
-    buildkite-token-secret = var.buildkite_agent_token_secret
-    buildkite-queue        = var.buildkite_queue
-    buildkite-tags         = var.buildkite_agent_tags
-    buildkite-api-endpoint = var.buildkite_api_endpoint
-    shutdown-script        = file("${path.module}/../../packer/linux/conf/buildkite-agent/scripts/stop-agent-gracefully")
+    enable-oslogin                          = "FALSE"
+    buildkite-token                         = var.buildkite_agent_token
+    buildkite-token-secret                  = var.buildkite_agent_token_secret
+    buildkite-queue                         = var.buildkite_queue
+    buildkite-tags                          = var.buildkite_agent_tags
+    buildkite-api-endpoint                  = var.buildkite_api_endpoint
+    buildkite-disconnect-after-idle-timeout = tostring(var.agent_idle_timeout)
+    shutdown-script                         = file("${path.module}/../../packer/linux/conf/buildkite-agent/scripts/stop-agent-gracefully")
   }
 
   metadata_startup_script = templatefile("${path.module}/templates/startup.sh.tftpl", {
-    bootstrap_script = file("${path.module}/../../templates/scripts/bootstrap-buildkite-agent")
+    bootstrap_script             = file("${path.module}/../../templates/scripts/bootstrap-buildkite-agent")
+    agent_config_template        = file("${path.module}/../../templates/config/buildkite-agent.cfg.template")
+    agent_env_template           = file("${path.module}/../../templates/config/buildkite-agent-env.template")
+    terminate_script             = file("${path.module}/../../packer/linux/conf/buildkite-agent/scripts/terminate-instance")
+    bootstrap_failure_script     = file("${path.module}/../../packer/linux/conf/buildkite-agent/scripts/terminate-instance-after-bootstrap-failure")
+    termination_lifecycle_script = file("${path.module}/../../packer/linux/conf/buildkite-agent/scripts/terminate-instance-after-agent-exit")
+    termination_drop_in          = file("${path.module}/../../packer/linux/conf/buildkite-agent/systemd/termination.conf")
   })
 
   lifecycle {
@@ -159,7 +166,9 @@ resource "google_compute_region_autoscaler" "buildkite_agents" {
       filter = "resource.type = \"global\" AND metric.label.Queue = \"${var.buildkite_queue}\""
     }
 
-    mode = "ON"
+    # Demand may add capacity, but idle agents remove their own exact VM so GCP
+    # never selects an arbitrary potentially busy instance for scale-in.
+    mode = "ONLY_SCALE_OUT"
   }
 
   # Ensure the metrics function has been invoked and the custom metric exists

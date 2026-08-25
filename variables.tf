@@ -78,6 +78,17 @@ variable "buildkite_agent_tags" {
   default     = ""
 }
 
+variable "agent_idle_timeout" {
+  description = "Seconds an agent must remain idle before disconnecting and removing its VM from the managed instance group. Set to 0 to disable idle-based scale-in; because the native autoscaler is scale-out-only, capacity will then remain at its high-water mark."
+  type        = number
+  default     = 600
+
+  validation {
+    condition     = var.agent_idle_timeout >= 0 && floor(var.agent_idle_timeout) == var.agent_idle_timeout
+    error_message = "Agent idle timeout must be a non-negative integer number of seconds."
+  }
+}
+
 variable "buildkite_agent_release" {
   description = "Buildkite agent release channel: 'stable' (recommended), 'beta', or 'edge'"
   type        = string

@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ ! -d /run/systemd/system ]]; then
+  echo "SKIP: systemd is not running"
+  exit 0
+fi
+
+readonly UNIT="buildkite-agent-termination-semantics-test.service"
+readonly UNIT_PATH="/run/systemd/system/${UNIT}"
+readonly CALLS_FILE="/tmp/${UNIT}.calls"
+
+cleanup() {
+  systemctl stop "${UNIT}" >/dev/null 2>&1 || true
+  systemctl reset-failed "${UNIT}" >/dev/null 2>&1 || true
+  rm -f "${UNIT_PATH}" "${CALLS_FILE}"
+  systemctl daemon-reload
+}
+trap cleanup EXIT
+
+cat >"${UNIT_PATH}" <<EOF
+[Unit]
+StartLimitIntervalSec=10
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c 'echo start >>${CALLS_FILE}; exit 0'
+ExecStopPost=/bin/sh -c 'echo post >>${CALLS_FILE}; exit 1'
+Restart=on-failure
+RestartSec=1
+EOF
+
+systemctl daemon-reload
+systemctl start "${UNIT}" >/dev/null 2>&1 || true
+
+restarts=0
+for _ in {1..10}; do
+  restarts="$(systemctl show "${UNIT}" --property=NRestarts --value)"
+  if [[ "${restarts}" -ge 1 ]]; then
+    break
+  fi
+  sleep 1
+done
+[[ "${restarts}" -ge 1 ]] || {
+  echo "FAIL: ExecStopPost failure did not trigger Restart=on-failure" >&2
+  exit 1
+}
+
+grep -Fxq start "${CALLS_FILE}" || {
+  echo "FAIL: test service did not start" >&2
+  exit 1
+}
+
+echo "PASS: systemd ExecStopPost failure triggers Restart=on-failure"

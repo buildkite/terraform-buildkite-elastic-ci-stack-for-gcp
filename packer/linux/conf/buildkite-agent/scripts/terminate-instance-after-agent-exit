@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly SHUTDOWN_LOCK_FILE="${BUILDKITE_SHUTDOWN_LOCK_FILE:-/var/lib/buildkite-agent/shutdown.lock}"
+readonly EXTERNAL_SHUTDOWN_MARKER="${BUILDKITE_EXTERNAL_SHUTDOWN_MARKER:-/var/lib/buildkite-agent/external-shutdown}"
+readonly TERMINATE_INSTANCE="${BUILDKITE_TERMINATE_INSTANCE_SCRIPT:-/usr/local/bin/terminate-instance}"
+
+# stop-agent-gracefully writes this marker before stopping the service. It
+# persists if the shutdown script exhausts its drain budget before the agent
+# exits, avoiding a race when its flock is released first.
+if [[ -e "${EXTERNAL_SHUTDOWN_MARKER}" ]]; then
+  echo "GCP shutdown is already in progress; skipping managed instance group removal"
+  exit 0
+fi
+
+# The flock covers the smaller window before the marker becomes visible. Recreate
+# a missing lock rather than suppressing idle scale-in or crash replacement.
+if ! { exec 9<"${SHUTDOWN_LOCK_FILE}"; } 2>/dev/null; then
+  echo "Warning: shutdown lock was missing; recreating it" >&2
+  : >"${SHUTDOWN_LOCK_FILE}"
+  chmod 0644 "${SHUTDOWN_LOCK_FILE}" 2>/dev/null || true
+  exec 9<"${SHUTDOWN_LOCK_FILE}"
+fi
+if ! flock --nonblock 9; then
+  echo "GCP shutdown is already in progress; skipping managed instance group removal"
+  exit 0
+fi
+
+echo "Buildkite agent exited (${SERVICE_RESULT:-unknown}, ${EXIT_CODE:-unknown}, ${EXIT_STATUS:-unknown})"
+if "${TERMINATE_INSTANCE}"; then
+  exit 0
+fi
+
+# An ExecStopPost failure makes the service fail. The package unit's existing
+# Restart=on-failure policy then restarts the agent after RestartSec, preventing
+# a live VM from remaining unusable capacity.
+echo "Managed instance group removal failed; allowing systemd to restart the Buildkite agent" >&2
+exit 1

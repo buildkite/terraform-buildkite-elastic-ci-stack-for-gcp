@@ -54,6 +54,7 @@ module "compute" {
   buildkite_queue              = var.buildkite_queue
   buildkite_agent_tags         = var.buildkite_agent_tags
   buildkite_api_endpoint       = var.buildkite_api_endpoint
+  agent_idle_timeout           = var.agent_idle_timeout
 
   # Instance configuration
   machine_type      = var.machine_type

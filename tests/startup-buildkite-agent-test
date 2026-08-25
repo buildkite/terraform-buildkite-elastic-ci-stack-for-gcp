@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly REPO_ROOT
+readonly TEMPLATE="${REPO_ROOT}/modules/compute/templates/startup.sh.tftpl"
+TEST_ROOT="$(mktemp -d)"
+readonly TEST_ROOT
+
+cleanup() {
+  rm -rf "${TEST_ROOT}"
+}
+trap cleanup EXIT
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+assert_line_count() {
+  local actual
+  actual="$(wc -l <"$1" | tr -d ' ')"
+  [[ "${actual}" == "$2" ]] || fail "$1 contains ${actual} lines, expected $2"
+}
+
+# Render the template with tiny test payloads. Replace fixed VM paths with a
+# temporary root so this can run without modifying the host.
+rendered="${TEST_ROOT}/startup"
+# shellcheck disable=SC2016 # Terraform template placeholders must remain literal.
+sed \
+  -e 's|${bootstrap_script}|#!/usr/bin/env bash\nexit "${BOOTSTRAP_EXIT:-0}"|' \
+  -e 's|${agent_config_template}|disconnect-after-idle-timeout=0|' \
+  -e 's|${agent_env_template}|BUILDKITE_AGENT_TOKEN=test-token|' \
+  -e 's|${terminate_script}|#!/usr/bin/env bash\nprintf "%s\\n" called >>"${TERMINATE_CALLS_FILE}"\nexit "${TERMINATE_EXIT:-0}"|' \
+  -e 's|${bootstrap_failure_script}|#!/usr/bin/env bash\n"$(dirname "$0")/terminate-instance"|' \
+  -e 's|${termination_lifecycle_script}|#!/usr/bin/env bash\nexit 0|' \
+  -e 's|${termination_drop_in}|[Service]\nExecStopPost=/usr/local/bin/terminate-instance-after-agent-exit|' \
+  -e "s|/usr/local/bin|${TEST_ROOT}/usr-local-bin|g" \
+  -e "s|/etc/buildkite-agent|${TEST_ROOT}/etc-buildkite-agent|g" \
+  -e "s|/etc/systemd/system|${TEST_ROOT}/etc-systemd-system|g" \
+  -e "s|/var/lib/buildkite-agent|${TEST_ROOT}/var-lib-buildkite-agent|g" \
+  "${TEMPLATE}" >"${rendered}"
+chmod +x "${rendered}"
+
+mkdir -p \
+  "${TEST_ROOT}/bin" \
+  "${TEST_ROOT}/var-lib-buildkite-agent" \
+  "${TEST_ROOT}/usr-local-bin" \
+  "${TEST_ROOT}/etc-buildkite-agent/templates" \
+  "${TEST_ROOT}/etc-systemd-system"
+cat >"${TEST_ROOT}/bin/install" <<'EOF'
+#!/usr/bin/env bash
+while (($#)); do
+  case "$1" in
+    -o|-g|-m) shift 2 ;;
+    *) break ;;
+  esac
+done
+cp "$1" "$2"
+EOF
+cat >"${TEST_ROOT}/bin/systemctl" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+chmod +x "${TEST_ROOT}/bin"/*
+
+run_case() {
+  local name="$1"
+  local bootstrap_exit="$2"
+  local terminate_exit="$3"
+  local expected_exit="$4"
+  local case_dir="${TEST_ROOT}/${name}"
+  local actual_exit
+
+  mkdir -p "${case_dir}"
+  : >"${case_dir}/terminate-calls"
+  rm -rf "${TEST_ROOT}/usr-local-bin" "${TEST_ROOT}/etc-buildkite-agent" "${TEST_ROOT}/etc-systemd-system"
+  mkdir -p \
+    "${TEST_ROOT}/usr-local-bin" \
+    "${TEST_ROOT}/etc-buildkite-agent/templates" \
+    "${TEST_ROOT}/etc-systemd-system"
+
+  set +e
+  PATH="${TEST_ROOT}/bin:${PATH}" \
+    BOOTSTRAP_EXIT="${bootstrap_exit}" \
+    TERMINATE_EXIT="${terminate_exit}" \
+    TERMINATE_CALLS_FILE="${case_dir}/terminate-calls" \
+    bash "${rendered}" >"${case_dir}/output" 2>&1
+  actual_exit=$?
+  set -e
+
+  [[ "${actual_exit}" == "${expected_exit}" ]] || {
+    cat "${case_dir}/output" >&2
+    fail "${name} exited ${actual_exit}, expected ${expected_exit}"
+  }
+}
+
+run_case success 0 0 0
+assert_line_count "${TEST_ROOT}/success/terminate-calls" 0
+
+run_case bootstrap-failure 1 0 1
+assert_line_count "${TEST_ROOT}/bootstrap-failure/terminate-calls" 1
+grep -Fq "bootstrap failed; requesting exact managed instance group removal" "${TEST_ROOT}/bootstrap-failure/output" || fail "bootstrap failure was not reported"
+
+run_case bootstrap-and-removal-failure 1 1 1
+assert_line_count "${TEST_ROOT}/bootstrap-and-removal-failure/terminate-calls" 1
+
+echo "PASS: startup-buildkite-agent"

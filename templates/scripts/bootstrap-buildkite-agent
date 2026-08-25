@@ -40,6 +40,12 @@ BUILDKITE_TAGS=$(get_metadata "buildkite-tags" "")
 BUILDKITE_API_ENDPOINT=$(get_metadata "buildkite-api-endpoint" "")
 BUILDKITE_GCP_ENABLE_SECRET_MANAGER=$(get_metadata "buildkite-enable-secret-manager" "true")
 BUILDKITE_DISCONNECT_AFTER_JOB=$(get_metadata "buildkite-disconnect-after-job" "false")
+BUILDKITE_DISCONNECT_AFTER_IDLE_TIMEOUT=$(get_metadata "buildkite-disconnect-after-idle-timeout" "0")
+
+if ! [[ "$BUILDKITE_DISCONNECT_AFTER_IDLE_TIMEOUT" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: buildkite-disconnect-after-idle-timeout metadata must be a non-negative integer"
+    exit 1
+fi
 
 # Only explicit boolean metadata values change optional agent behavior. Normalize
 # everything else to secure, backward-compatible defaults and avoid writing
@@ -65,6 +71,7 @@ export BUILDKITE_TAGS
 export BUILDKITE_API_ENDPOINT
 export BUILDKITE_GCP_ENABLE_SECRET_MANAGER
 export BUILDKITE_DISCONNECT_AFTER_JOB
+export BUILDKITE_DISCONNECT_AFTER_IDLE_TIMEOUT
 export PROJECT_ID
 export ZONE
 export INSTANCE_NAME
@@ -75,6 +82,7 @@ echo "  Queue: $BUILDKITE_QUEUE"
 echo "  Priority: $BUILDKITE_PRIORITY"
 echo "  Tags: $BUILDKITE_TAGS"
 echo "  API Endpoint: ${BUILDKITE_API_ENDPOINT:-default}"
+echo "  Disconnect after idle: ${BUILDKITE_DISCONNECT_AFTER_IDLE_TIMEOUT}s"
 echo "  GCP Project: $PROJECT_ID"
 echo "  GCP Zone: $ZONE"
 echo "  Instance: $INSTANCE_NAME"
@@ -85,8 +93,17 @@ echo "Generating configuration from templates..."
 envsubst < /etc/buildkite-agent/templates/buildkite-agent.cfg.template \
   | sudo tee /etc/buildkite-agent/buildkite-agent.cfg > /dev/null
 
-# The template retains a literal false default so images remain compatible with
-# older Terraform module bootstraps that do not export this newer setting.
+# Keep literal defaults in the image template so older module bootstraps remain
+# compatible with newer images. Apply module-provided settings after rendering.
+sudo sed -i \
+  "s/^disconnect-after-idle-timeout=.*/disconnect-after-idle-timeout=$BUILDKITE_DISCONNECT_AFTER_IDLE_TIMEOUT/" \
+  /etc/buildkite-agent/buildkite-agent.cfg
+if ! grep -Fxq "disconnect-after-idle-timeout=$BUILDKITE_DISCONNECT_AFTER_IDLE_TIMEOUT" \
+  /etc/buildkite-agent/buildkite-agent.cfg; then
+    echo "ERROR: failed to configure disconnect-after-idle-timeout"
+    exit 1
+fi
+
 if [[ "$BUILDKITE_DISCONNECT_AFTER_JOB" == "true" ]]; then
     sudo sed -i 's/^disconnect-after-job=.*/disconnect-after-job=true/' \
       /etc/buildkite-agent/buildkite-agent.cfg

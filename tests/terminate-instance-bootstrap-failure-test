@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly REPO_ROOT
+readonly SCRIPT="${REPO_ROOT}/packer/linux/conf/buildkite-agent/scripts/terminate-instance-after-bootstrap-failure"
+TEST_ROOT="$(mktemp -d)"
+readonly TEST_ROOT
+
+cleanup() {
+  rm -rf "${TEST_ROOT}"
+}
+trap cleanup EXIT
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+mkdir -p "${TEST_ROOT}/bin"
+cat >"${TEST_ROOT}/bin/flock" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${FLOCK_CALLS_FILE}"
+exit "${FLOCK_EXIT:-0}"
+EOF
+cat >"${TEST_ROOT}/bin/terminate-instance" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' called >>"${TERMINATE_CALLS_FILE}"
+exit "${TERMINATE_EXIT:-0}"
+EOF
+chmod +x "${TEST_ROOT}/bin"/*
+
+run_case() {
+  local name="$1"
+  local terminate_exit="$2"
+  local expected_exit="$3"
+  local dir="${TEST_ROOT}/${name}"
+  local actual
+
+  mkdir -p "${dir}"
+  if [[ "${LOCK_FILE_MISSING:-false}" != "true" ]]; then
+    : >"${dir}/shutdown.lock"
+  fi
+  : >"${dir}/flock-calls"
+  : >"${dir}/terminate-calls"
+
+  set +e
+  PATH="${TEST_ROOT}/bin:${PATH}" \
+    FLOCK_CALLS_FILE="${dir}/flock-calls" \
+    TERMINATE_CALLS_FILE="${dir}/terminate-calls" \
+    TERMINATE_EXIT="${terminate_exit}" \
+    BUILDKITE_SHUTDOWN_LOCK_FILE="${dir}/shutdown.lock" \
+    BUILDKITE_EXTERNAL_SHUTDOWN_MARKER="${dir}/external-shutdown" \
+    BUILDKITE_TERMINATE_INSTANCE_SCRIPT="${TEST_ROOT}/bin/terminate-instance" \
+    bash "${SCRIPT}" >"${dir}/output" 2>&1
+  actual=$?
+  set -e
+
+  [[ "${actual}" == "${expected_exit}" ]] || fail "${name} exited ${actual}, expected ${expected_exit}"
+  if [[ "${FLOCK_EXIT:-0}" == "0" && ! -e "${dir}/external-shutdown" ]]; then
+    grep -Fxq -- '--nonblock 9' "${dir}/flock-calls" || fail "${name} did not acquire the shared lifecycle lock"
+    grep -Fxq called "${dir}/terminate-calls" || fail "${name} did not invoke terminate-instance"
+  fi
+}
+
+run_case success 0 0
+run_case removal-failure 1 1
+grep -Fq "Unable to remove VM after Buildkite agent bootstrap failure" "${TEST_ROOT}/removal-failure/output" || fail "removal failure was not reported"
+
+mkdir -p "${TEST_ROOT}/external-shutdown"
+touch "${TEST_ROOT}/external-shutdown/external-shutdown"
+run_case external-shutdown 0 0
+[[ ! -s "${TEST_ROOT}/external-shutdown/terminate-calls" ]] || fail "external shutdown invoked terminate-instance"
+grep -Fq "GCP shutdown is already in progress" "${TEST_ROOT}/external-shutdown/output" || fail "external shutdown was not detected"
+
+FLOCK_EXIT=1 run_case concurrent-removal 0 0
+[[ ! -s "${TEST_ROOT}/concurrent-removal/terminate-calls" ]] || fail "concurrent removal invoked terminate-instance"
+grep -Fq "removal is already in progress" "${TEST_ROOT}/concurrent-removal/output" || fail "concurrent removal was not detected"
+
+LOCK_FILE_MISSING=true run_case missing-lock 0 0
+grep -Fq "shutdown lock was missing; recreating it" "${TEST_ROOT}/missing-lock/output" || fail "missing lock was not reported"
+[[ -f "${TEST_ROOT}/missing-lock/shutdown.lock" ]] || fail "missing lock was not recreated"
+
+echo "PASS: terminate-instance-after-bootstrap-failure"

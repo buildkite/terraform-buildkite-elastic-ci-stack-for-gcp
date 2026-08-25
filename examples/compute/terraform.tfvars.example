@@ -33,6 +33,7 @@ buildkite_agent_release = "stable"
 buildkite_queue         = "default"
 buildkite_agent_tags    = "os=linux,environment=production"
 buildkite_api_endpoint  = "https://agent.buildkite.com/v3"
+agent_idle_timeout      = 600  # Set to 0 to keep capacity at its high-water mark
 
 # Autoscaling Configuration
 min_size                      = 0

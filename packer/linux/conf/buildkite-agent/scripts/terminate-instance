@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# This image-baked primitive is intentionally dormant. Before wiring it into an
-# agent lifecycle, the caller must stop the agent and grant the VM permission to
-# update its managed instance group.
+# This script requests exact removal of the current VM from its managed
+# instance group. The systemd lifecycle wrapper coordinates external shutdown
+# and restart fallback around this primitive.
 readonly METADATA_URL="${GCP_METADATA_URL:-http://metadata.google.internal/computeMetadata/v1}"
 readonly MAX_ATTEMPTS="${BUILDKITE_TERMINATION_MAX_ATTEMPTS:-4}"
 readonly RETRY_BASE_SECONDS="${BUILDKITE_TERMINATION_RETRY_BASE_SECONDS:-2}"

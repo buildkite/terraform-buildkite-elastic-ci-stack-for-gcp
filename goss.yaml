@@ -52,6 +52,12 @@ file:
     owner: buildkite-agent
     group: buildkite-agent
 
+  /var/lib/buildkite-agent/shutdown.lock:
+    exists: true
+    owner: buildkite-agent
+    group: buildkite-agent
+    mode: "0644"
+
   # -- Bootstrap and agent lifecycle scripts --
 
   /usr/local/bin/bootstrap-buildkite-agent:
@@ -66,10 +72,25 @@ file:
     exists: true
     mode: "0755"
 
+  /usr/local/bin/terminate-instance-after-bootstrap-failure:
+    exists: true
+    mode: "0755"
+
+  # Baked into the image but dormant until the Terraform module installs its
+  # systemd lifecycle drop-in.
+  /usr/local/bin/terminate-instance-after-agent-exit:
+    exists: true
+    mode: "0755"
+
   # -- TMPDIR systemd drop-in --
   # CIS Level 1 mounts /tmp with noexec, so buildkite-agent needs TMPDIR=/var/tmp
   /etc/systemd/system/buildkite-agent.service.d/tmpdir.conf:
     exists: true
+
+  # The Terraform module installs termination.conf at startup. Image validation
+  # uses a standalone VM, so the lifecycle hook intentionally remains dormant.
+  /etc/systemd/system/buildkite-agent.service.d/termination.conf:
+    exists: false
 
   # -- Docker configuration --
 
@@ -399,6 +420,14 @@ command:
     exit-status: 0
     stdout:
       - /TMPDIR=\/var\/tmp/
+
+  # Failed removal must make ExecStopPost fail so the package unit's existing
+  # Restart=on-failure policy recovers the agent once the module installs its
+  # termination drop-in.
+  systemctl show buildkite-agent.service --property=Restart:
+    exit-status: 0
+    stdout:
+      - /Restart=on-failure/
 
   # Graceful shutdown relies on systemd allowing the agent to finish its current
   # job after SIGTERM rather than applying a service-level stop timeout.
