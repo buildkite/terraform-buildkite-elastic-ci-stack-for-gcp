@@ -91,20 +91,36 @@ run "uses_scale_out_only_autoscaling" {
   command = plan
 
   variables {
-    project_id                  = "test-project"
-    network_self_link           = "projects/test-project/global/networks/test-network"
-    subnet_self_link            = "projects/test-project/regions/us-central1/subnetworks/test-subnet"
-    agent_service_account_email = "agent@test-project.iam.gserviceaccount.com"
-    image                       = "projects/test-project/global/images/test-image"
-    buildkite_organization_slug = "test-organization"
-    buildkite_agent_token       = "test-token"
-    enable_autoscaling          = true
-    enable_autohealing          = false
+    project_id                    = "test-project"
+    network_self_link             = "projects/test-project/global/networks/test-network"
+    subnet_self_link              = "projects/test-project/regions/us-central1/subnetworks/test-subnet"
+    agent_service_account_email   = "agent@test-project.iam.gserviceaccount.com"
+    image                         = "projects/test-project/global/images/test-image"
+    buildkite_organization_slug   = "test-organization"
+    buildkite_agent_token         = "test-token"
+    enable_autoscaling            = true
+    enable_autohealing            = false
+    autoscaling_jobs_per_instance = 2
   }
 
   assert {
     condition     = google_compute_region_autoscaler.buildkite_agents[0].autoscaling_policy[0].mode == "ONLY_SCALE_OUT"
     error_message = "The native GCP autoscaler must never select arbitrary agents for scale-in."
+  }
+
+  assert {
+    condition     = google_compute_region_autoscaler.buildkite_agents[0].autoscaling_policy[0].stabilization_period == 1
+    error_message = "The autoscaler must use the tested one-second stabilization period."
+  }
+
+  assert {
+    condition     = google_compute_region_autoscaler.buildkite_agents[0].autoscaling_policy[0].metric[0].single_instance_assignment == 2
+    error_message = "Unfinished jobs must be assigned per instance as a per-group work metric."
+  }
+
+  assert {
+    condition     = google_compute_region_autoscaler.buildkite_agents[0].autoscaling_policy[0].metric[0].target == null
+    error_message = "The per-group unfinished-jobs metric must not be configured as a utilization target."
   }
 }
 

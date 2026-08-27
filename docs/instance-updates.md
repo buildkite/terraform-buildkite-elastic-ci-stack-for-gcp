@@ -1,16 +1,23 @@
 # Agent scaling and instance updates
 
+This behavior requires Google provider 7.33 or later because that release added
+configurable autoscaler stabilization periods.
+
 ## Job-safe scale-in
 
-The native GCP autoscaler uses the Buildkite queue metric only to scale out,
-not scale-in. When an agent has been idle for `agent_idle_timeout` seconds (600
-by default) it disconnects, and a systemd lifecycle hook removes that VM from
-the regional managed instance group and decrements the group's target size. Set
-`agent_idle_timeout = 0` to disable idle agent scale-in.
+The native GCP autoscaler assigns the queue's unfinished jobs across instances
+and only scales out. Its one-second stabilization period avoids retaining a peak
+recommendation that would recreate a VM just removed by an idle agent; zero
+prevents scale-out for this custom metric. When an agent has been idle for
+`agent_idle_timeout` seconds (600 by default), it disconnects, and a systemd
+lifecycle hook removes that VM
+from the regional managed instance group and decrements the group's target size.
+Set `agent_idle_timeout = 0` to disable idle agent scale-in.
 
-When autoscaling remains enabled, using `0` also means the scale-out-only fleet
-stays at its high-water mark; use it when autoscaling is disabled or another
-system manages capacity.
+The idle timeout is also the grace period for bursty workloads. If another job
+arrives before it expires, the idle agent accepts the job and resets its timer.
+When autoscaling remains enabled, setting it to `0` keeps the scale-out-only
+fleet at its high-water mark.
 
 The termination hook is installed by this Terraform module. It therefore
 assumes the VM belongs to the regional MIG created by the module.

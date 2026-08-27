@@ -182,7 +182,7 @@ variable "cooldown_period" {
 }
 
 variable "autoscaling_jobs_per_instance" {
-  description = "Target number of Buildkite jobs per instance for autoscaling"
+  description = "Number of unfinished Buildkite jobs assigned to each instance for autoscaling"
   type        = number
   default     = 1
 

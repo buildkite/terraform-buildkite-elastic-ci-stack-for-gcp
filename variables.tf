@@ -189,7 +189,7 @@ variable "cooldown_period" {
 }
 
 variable "autoscaling_jobs_per_instance" {
-  description = "Target number of Buildkite jobs per instance for autoscaling. Lower values = more parallelization, higher cost."
+  description = "Number of unfinished Buildkite jobs assigned to each instance for autoscaling. Lower values provide more parallelism at higher cost."
   type        = number
   default     = 1
 
