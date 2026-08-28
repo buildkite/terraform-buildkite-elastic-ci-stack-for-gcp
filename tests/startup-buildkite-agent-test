@@ -34,7 +34,9 @@ sed \
   -e 's|${terminate_script}|#!/usr/bin/env bash\nprintf "%s\\n" called >>"${TERMINATE_CALLS_FILE}"\nexit "${TERMINATE_EXIT:-0}"|' \
   -e 's|${bootstrap_failure_script}|#!/usr/bin/env bash\n"$(dirname "$0")/terminate-instance"|' \
   -e 's|${termination_lifecycle_script}|#!/usr/bin/env bash\nexit 0|' \
-  -e 's|${termination_drop_in}|[Service]\nExecStopPost=/usr/local/bin/terminate-instance-after-agent-exit|' \
+  -e 's|${termination_drop_in}|[Service]\nExecStopPost=/usr/local/bin/terminate-instance-after-agent-exit\nRestartSec=5|' \
+  -e 's|${enable_self_termination}|true|' \
+  -e 's|$${SELF_TERMINATION_ENABLED}|${SELF_TERMINATION_ENABLED}|g' \
   -e "s|/usr/local/bin|${TEST_ROOT}/usr-local-bin|g" \
   -e "s|/etc/buildkite-agent|${TEST_ROOT}/etc-buildkite-agent|g" \
   -e "s|/etc/systemd/system|${TEST_ROOT}/etc-systemd-system|g" \

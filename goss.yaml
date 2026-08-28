@@ -429,6 +429,11 @@ command:
     stdout:
       - /Restart=on-failure/
 
+  systemctl show buildkite-agent.service --property=RestartUSec:
+    exit-status: 0
+    stdout:
+      - /RestartUSec=5s/
+
   # Graceful shutdown relies on systemd allowing the agent to finish its current
   # job after SIGTERM rather than applying a service-level stop timeout.
   systemctl show buildkite-agent.service --property=TimeoutStopUSec:

@@ -52,7 +52,7 @@ resource "google_compute_instance_template" "buildkite_agent" {
     buildkite-queue                         = var.buildkite_queue
     buildkite-tags                          = var.buildkite_agent_tags
     buildkite-api-endpoint                  = var.buildkite_api_endpoint
-    buildkite-disconnect-after-idle-timeout = tostring(var.agent_idle_timeout)
+    buildkite-disconnect-after-idle-timeout = tostring(var.enable_autoscaling ? var.agent_idle_timeout : 0)
     shutdown-script                         = file("${path.module}/../../packer/linux/conf/buildkite-agent/scripts/stop-agent-gracefully")
   }
 
@@ -64,6 +64,7 @@ resource "google_compute_instance_template" "buildkite_agent" {
     bootstrap_failure_script     = file("${path.module}/../../packer/linux/conf/buildkite-agent/scripts/terminate-instance-after-bootstrap-failure")
     termination_lifecycle_script = file("${path.module}/../../packer/linux/conf/buildkite-agent/scripts/terminate-instance-after-agent-exit")
     termination_drop_in          = file("${path.module}/../../packer/linux/conf/buildkite-agent/systemd/termination.conf")
+    enable_self_termination      = var.enable_autoscaling
   })
 
   lifecycle {

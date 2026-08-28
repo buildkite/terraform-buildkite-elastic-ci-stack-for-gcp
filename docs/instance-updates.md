@@ -17,7 +17,11 @@ Set `agent_idle_timeout = 0` to disable idle agent scale-in.
 The idle timeout is also the grace period for bursty workloads. If another job
 arrives before it expires, the idle agent accepts the job and resets its timer.
 When autoscaling remains enabled, setting it to `0` keeps the scale-out-only
-fleet at its high-water mark.
+fleet at its high-water mark. When autoscaling is disabled, the module disables
+idle disconnect and self-termination so the static MIG retains its configured
+capacity. When disabling autoscaling on an existing stack, recycle the existing
+VMs so they adopt the new template; opportunistic updates do not reconfigure
+already-running agents.
 
 The termination hook is installed by this Terraform module. It therefore
 assumes the VM belongs to the regional MIG created by the module.

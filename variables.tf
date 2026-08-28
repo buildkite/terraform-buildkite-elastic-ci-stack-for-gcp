@@ -79,7 +79,7 @@ variable "buildkite_agent_tags" {
 }
 
 variable "agent_idle_timeout" {
-  description = "Seconds an agent must remain idle before disconnecting and removing its VM from the managed instance group. Set to 0 to disable idle-based scale-in; because the native autoscaler is scale-out-only, capacity will then remain at its high-water mark."
+  description = "Seconds an autoscaled agent must remain idle before disconnecting and removing its VM from the managed instance group. Set to 0 to disable idle-based scale-in; because the native autoscaler is scale-out-only, capacity will then remain at its high-water mark. Ignored when autoscaling is disabled."
   type        = number
   default     = 600
 

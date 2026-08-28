@@ -19,8 +19,13 @@ run "uses_non_disruptive_update_policy" {
   }
 
   assert {
-    condition     = google_compute_instance_template.buildkite_agent.metadata["buildkite-disconnect-after-idle-timeout"] == "123"
-    error_message = "The configured agent idle timeout must be passed to instance metadata."
+    condition     = google_compute_instance_template.buildkite_agent.metadata["buildkite-disconnect-after-idle-timeout"] == "0"
+    error_message = "Static fleets must disable idle disconnect so they retain their configured capacity."
+  }
+
+  assert {
+    condition     = strcontains(google_compute_instance_template.buildkite_agent.metadata_startup_script, "SELF_TERMINATION_ENABLED=\"false\"")
+    error_message = "Static fleets must disable the self-termination lifecycle and bootstrap-failure removal paths."
   }
 
   # The installed template deliberately retains a literal zero default for
@@ -104,6 +109,21 @@ run "uses_scale_out_only_autoscaling" {
   }
 
   assert {
+    condition     = google_compute_instance_template.buildkite_agent.metadata["buildkite-disconnect-after-idle-timeout"] == "600"
+    error_message = "Autoscaled fleets must pass the configured idle timeout to agent metadata."
+  }
+
+  assert {
+    condition     = strcontains(google_compute_instance_template.buildkite_agent.metadata_startup_script, "ExecStopPost=/usr/local/bin/terminate-instance-after-agent-exit")
+    error_message = "Autoscaled fleets must install the self-termination lifecycle hook."
+  }
+
+  assert {
+    condition     = strcontains(google_compute_instance_template.buildkite_agent.metadata_startup_script, "Buildkite agent bootstrap failed; requesting exact managed instance group removal")
+    error_message = "Autoscaled fleets must reclaim VMs whose agent cannot bootstrap."
+  }
+
+  assert {
     condition     = google_compute_region_autoscaler.buildkite_agents[0].autoscaling_policy[0].mode == "ONLY_SCALE_OUT"
     error_message = "The native GCP autoscaler must never select arbitrary agents for scale-in."
   }
@@ -135,12 +155,12 @@ run "uses_default_agent_idle_timeout" {
     image                       = "projects/test-project/global/images/test-image"
     buildkite_organization_slug = "test-organization"
     buildkite_agent_token       = "test-token"
-    enable_autoscaling          = false
+    enable_autoscaling          = true
     enable_autohealing          = false
   }
 
   assert {
     condition     = google_compute_instance_template.buildkite_agent.metadata["buildkite-disconnect-after-idle-timeout"] == "600"
-    error_message = "The default agent idle timeout must be 600 seconds."
+    error_message = "Autoscaled fleets must use the default 600-second agent idle timeout."
   }
 }
