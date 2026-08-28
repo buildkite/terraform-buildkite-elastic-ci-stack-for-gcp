@@ -129,28 +129,43 @@ if [ -x /usr/bin/fix-buildkite-agent-builds-permissions ]; then
   sudo /usr/bin/fix-buildkite-agent-builds-permissions
 fi
 
-# Enable and start the buildkite-agent service
-echo "Starting Buildkite agent service..."
+# Complete all fallible host setup before starting the agent. Once the agent is
+# running it can accept work immediately, so a later bootstrap error must not
+# cause the outer startup script to delete its VM.
 sudo systemctl daemon-reload
 sudo systemctl enable buildkite-agent
-sudo systemctl start buildkite-agent
 
-# Enable automatic security update timers. unattended-upgrades is restored
-# before image capture, and these timers are started when each agent boots.
-sudo systemctl enable --now apt-daily.timer apt-daily-upgrade.timer
+# Enable automatic security update timers. These are useful but not required for
+# the agent to run, so failure degrades with a warning instead of preventing the
+# fleet from bootstrapping.
+if ! sudo systemctl enable apt-daily.timer apt-daily-upgrade.timer; then
+    echo "Warning: could not enable automatic security update timers" >&2
+fi
+if ! sudo systemctl start apt-daily.timer apt-daily-upgrade.timer; then
+    echo "Warning: could not start automatic security update timers" >&2
+fi
 
-# Wait a moment for the service to start
+# Starting the agent is the final fallible setup operation. Agent exits after
+# this point are handled by its systemd lifecycle hook.
+echo "Starting Buildkite agent service..."
+if ! sudo systemctl start buildkite-agent; then
+    echo "❌ Failed to start Buildkite agent"
+    sudo systemctl status buildkite-agent --no-pager -l || true
+    sudo journalctl -u buildkite-agent --no-pager -n 20 || true
+    exit 1
+fi
+
+# Report an agent that dies immediately without turning a post-start failure into
+# bootstrap cleanup: it might already have accepted a job. Autoscaled agents use
+# the post-stop lifecycle; static fleets retain the VM for diagnosis.
 sleep 5
-
-# Check if the service started successfully
 if sudo systemctl is-active --quiet buildkite-agent; then
     echo "✅ Buildkite agent started successfully"
-    sudo systemctl status buildkite-agent --no-pager -l
+    sudo systemctl status buildkite-agent --no-pager -l || true
 else
-    echo "❌ Failed to start Buildkite agent"
-    sudo systemctl status buildkite-agent --no-pager -l
-    sudo journalctl -u buildkite-agent --no-pager -n 20
-    exit 1
+    echo "Warning: Buildkite agent is not active shortly after start" >&2
+    sudo systemctl status buildkite-agent --no-pager -l || true
+    sudo journalctl -u buildkite-agent --no-pager -n 20 || true
 fi
 
 echo "🎉 Buildkite agent configuration complete!"

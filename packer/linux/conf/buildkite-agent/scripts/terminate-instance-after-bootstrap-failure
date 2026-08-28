@@ -10,6 +10,18 @@ if [[ -e "${EXTERNAL_SHUTDOWN_MARKER}" ]]; then
   exit 0
 fi
 
+# Never delete a VM whose agent might be active: it could already be running a
+# job. Proceed only for explicit terminal states; fail closed on systemd errors
+# or any state that could still become active.
+agent_state="$(systemctl is-active buildkite-agent.service 2>/dev/null || true)"
+case "${agent_state}" in
+inactive | failed) ;;
+*)
+  echo "Buildkite agent state is '${agent_state:-unknown}'; refusing bootstrap-failure removal" >&2
+  exit 1
+  ;;
+esac
+
 # Serialize with ExecStopPost in case bootstrap failed after starting the agent
 # service and both paths attempt removal at nearly the same time. Recreate a
 # missing lock rather than suppressing this last-resort removal path.

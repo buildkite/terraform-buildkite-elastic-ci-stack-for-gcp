@@ -57,6 +57,13 @@ if [[ "$1" == "tee" ]]; then
   exit 0
 fi
 if [[ "$1" == "systemctl" ]]; then
+  shift
+  printf '%s\n' "$*" >>"${SYSTEMCTL_CALLS_FILE}"
+  case "$*" in
+    "start apt-daily.timer apt-daily-upgrade.timer") exit "${TIMER_SETUP_EXIT:-0}" ;;
+    "start buildkite-agent") exit "${AGENT_START_EXIT:-0}" ;;
+    "is-active --quiet buildkite-agent") exit "${AGENT_HEALTH_EXIT:-0}" ;;
+  esac
   exit 0
 fi
 if [[ "$1" == "chown" || "$1" == "chmod" ]]; then
@@ -90,6 +97,7 @@ printf '%s\n' test-agent
 EOF
 
   chmod +x "${bin}"/*
+  : >"${root}/systemctl-calls"
 
   # Rewrite fixed installation paths only inside the temporary script copy.
   sed \
@@ -99,7 +107,12 @@ EOF
     "${SCRIPT}" >"${root}/bootstrap"
 
   set +e
-  PATH="${bin}:${PATH}" TEST_IDLE_TIMEOUT="${idle_timeout}" \
+  PATH="${bin}:${PATH}" \
+    TEST_IDLE_TIMEOUT="${idle_timeout}" \
+    SYSTEMCTL_CALLS_FILE="${root}/systemctl-calls" \
+    TIMER_SETUP_EXIT="${TIMER_SETUP_EXIT:-0}" \
+    AGENT_START_EXIT="${AGENT_START_EXIT:-0}" \
+    AGENT_HEALTH_EXIT="${AGENT_HEALTH_EXIT:-0}" \
     bash "${root}/bootstrap" >"${root}/output" 2>&1
   actual_exit=$?
   set -e
@@ -118,5 +131,24 @@ grep -Fxq 'disconnect-after-idle-timeout=0' "${TEST_ROOT}/disabled/etc/buildkite
 
 run_case invalid invalid 1
 grep -Fq "must be a non-negative integer" "${TEST_ROOT}/invalid/output" || fail "invalid timeout was not rejected"
+
+TIMER_SETUP_EXIT=1 run_case timer-setup-failure 123 0
+grep -Fxq 'start buildkite-agent' "${TEST_ROOT}/timer-setup-failure/systemctl-calls" || fail "timer failure prevented agent start"
+grep -Fq 'Warning: could not start automatic security update timers' "${TEST_ROOT}/timer-setup-failure/output" || fail "timer failure did not warn"
+
+AGENT_START_EXIT=1 run_case agent-start-failure 123 1
+grep -Fq "Failed to start Buildkite agent" "${TEST_ROOT}/agent-start-failure/output" || fail "agent start failure was not reported"
+
+AGENT_HEALTH_EXIT=3 run_case agent-dies-after-start 123 0
+grep -Fq "Warning: Buildkite agent is not active shortly after start" "${TEST_ROOT}/agent-dies-after-start/output" || fail "post-start agent failure did not warn"
+
+python3 - "${TEST_ROOT}/configured/systemctl-calls" <<'PY'
+import sys
+calls = open(sys.argv[1]).read().splitlines()
+timers = calls.index("start apt-daily.timer apt-daily-upgrade.timer")
+agent = calls.index("start buildkite-agent")
+if timers >= agent:
+    raise SystemExit("agent started before timer setup completed")
+PY
 
 echo "PASS: bootstrap-buildkite-agent"
