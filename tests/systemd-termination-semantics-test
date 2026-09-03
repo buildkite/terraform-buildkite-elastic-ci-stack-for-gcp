@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ ! -d /run/systemd/system ]]; then
+  echo "SKIP: systemd is not running"
+  exit 0
+fi
+
+if [[ "${EUID}" -ne 0 ]]; then
+  echo "SKIP: requires root"
+  exit 0
+fi
+
+readonly UNIT="buildkite-agent-termination-semantics-test.service"
+readonly UNIT_PATH="/run/systemd/system/${UNIT}"
+readonly CALLS_FILE="/tmp/${UNIT}.calls"
+
+cleanup() {
+  systemctl stop "${UNIT}" >/dev/null 2>&1 || true
+  systemctl reset-failed "${UNIT}" >/dev/null 2>&1 || true
+  rm -f "${UNIT_PATH}" "${CALLS_FILE}"
+  systemctl daemon-reload
+}
+trap cleanup EXIT
+
+cat >"${UNIT_PATH}" <<EOF
+[Unit]
+StartLimitIntervalSec=10
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c 'echo start >>${CALLS_FILE}; exit 0'
+# Keep each restart cycle longer than StartLimitIntervalSec, modeling the
+# production termination retries plus the package unit's RestartSec=5.
+ExecStopPost=/bin/sh -c 'echo post >>${CALLS_FILE}; sleep 6; exit 1'
+Restart=on-failure
+RestartSec=5
+EOF
+
+systemctl daemon-reload
+systemctl start "${UNIT}" >/dev/null 2>&1 || true
+
+start_count=0
+for _ in {1..45}; do
+  start_count="$(grep -Fxc start "${CALLS_FILE}" 2>/dev/null || true)"
+  if [[ "${start_count}" -ge 4 ]]; then
+    break
+  fi
+  sleep 1
+done
+[[ "${start_count}" -ge 4 ]] || {
+  echo "FAIL: realistic restart cycles exhausted systemd start limits" >&2
+  exit 1
+}
+
+echo "PASS: realistic termination failure timing continues service recovery"

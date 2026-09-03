@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly REPO_ROOT
+readonly SCRIPT="${REPO_ROOT}/packer/linux/conf/buildkite-agent/scripts/terminate-instance-after-bootstrap-failure"
+TEST_ROOT="$(mktemp -d)"
+readonly TEST_ROOT
+
+cleanup() {
+  rm -rf "${TEST_ROOT}"
+}
+trap cleanup EXIT
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+mkdir -p "${TEST_ROOT}/bin"
+cat >"${TEST_ROOT}/bin/flock" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${FLOCK_CALLS_FILE}"
+exit "${FLOCK_EXIT:-0}"
+EOF
+cat >"${TEST_ROOT}/bin/terminate-instance" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' called >>"${TERMINATE_CALLS_FILE}"
+exit "${TERMINATE_EXIT:-0}"
+EOF
+cat >"${TEST_ROOT}/bin/systemctl" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "is-active" ]]; then
+  printf '%s\n' "${AGENT_STATE-inactive}"
+  exit "${AGENT_STATE_EXIT:-0}"
+fi
+exit 0
+EOF
+chmod +x "${TEST_ROOT}/bin"/*
+
+run_case() {
+  local name="$1"
+  local terminate_exit="$2"
+  local expected_exit="$3"
+  local dir="${TEST_ROOT}/${name}"
+  local actual
+
+  mkdir -p "${dir}"
+  if [[ "${LOCK_FILE_MISSING:-false}" != "true" ]]; then
+    : >"${dir}/shutdown.lock"
+  fi
+  : >"${dir}/flock-calls"
+  : >"${dir}/terminate-calls"
+
+  set +e
+  PATH="${TEST_ROOT}/bin:${PATH}" \
+    FLOCK_CALLS_FILE="${dir}/flock-calls" \
+    TERMINATE_CALLS_FILE="${dir}/terminate-calls" \
+    TERMINATE_EXIT="${terminate_exit}" \
+    AGENT_STATE="${AGENT_STATE-inactive}" \
+    AGENT_STATE_EXIT="${AGENT_STATE_EXIT:-0}" \
+    BUILDKITE_SHUTDOWN_LOCK_FILE="${dir}/shutdown.lock" \
+    BUILDKITE_EXTERNAL_SHUTDOWN_MARKER="${dir}/external-shutdown" \
+    BUILDKITE_TERMINATE_INSTANCE_SCRIPT="${TEST_ROOT}/bin/terminate-instance" \
+    bash "${SCRIPT}" >"${dir}/output" 2>&1
+  actual=$?
+  set -e
+
+  [[ "${actual}" == "${expected_exit}" ]] || fail "${name} exited ${actual}, expected ${expected_exit}"
+  if [[ "${FLOCK_EXIT:-0}" == "0" && "${AGENT_STATE-inactive}" =~ ^(inactive|failed)$ && ! -e "${dir}/external-shutdown" ]]; then
+    grep -Fxq -- '--nonblock 9' "${dir}/flock-calls" || fail "${name} did not acquire the shared lifecycle lock"
+    grep -Fxq called "${dir}/terminate-calls" || fail "${name} did not invoke terminate-instance"
+  fi
+}
+
+run_case success 0 0
+run_case removal-failure 1 1
+grep -Fq "Unable to remove VM after Buildkite agent bootstrap failure" "${TEST_ROOT}/removal-failure/output" || fail "removal failure was not reported"
+
+mkdir -p "${TEST_ROOT}/external-shutdown"
+touch "${TEST_ROOT}/external-shutdown/external-shutdown"
+run_case external-shutdown 0 0
+[[ ! -s "${TEST_ROOT}/external-shutdown/terminate-calls" ]] || fail "external shutdown invoked terminate-instance"
+grep -Fq "GCP shutdown is already in progress" "${TEST_ROOT}/external-shutdown/output" || fail "external shutdown was not detected"
+
+FLOCK_EXIT=1 run_case concurrent-removal 0 0
+[[ ! -s "${TEST_ROOT}/concurrent-removal/terminate-calls" ]] || fail "concurrent removal invoked terminate-instance"
+grep -Fq "removal is already in progress" "${TEST_ROOT}/concurrent-removal/output" || fail "concurrent removal was not detected"
+
+LOCK_FILE_MISSING=true run_case missing-lock 0 0
+grep -Fq "shutdown lock was missing; recreating it" "${TEST_ROOT}/missing-lock/output" || fail "missing lock was not reported"
+[[ -f "${TEST_ROOT}/missing-lock/shutdown.lock" ]] || fail "missing lock was not recreated"
+
+AGENT_STATE=active run_case active-agent 0 1
+[[ ! -s "${TEST_ROOT}/active-agent/terminate-calls" ]] || fail "active agent VM was removed"
+grep -Fq "Buildkite agent state is 'active'; refusing bootstrap-failure removal" "${TEST_ROOT}/active-agent/output" || fail "active agent was not protected"
+
+AGENT_STATE='' AGENT_STATE_EXIT=4 run_case unknown-agent-state 0 1
+[[ ! -s "${TEST_ROOT}/unknown-agent-state/terminate-calls" ]] || fail "unknown agent state removed VM"
+grep -Fq "Buildkite agent state is 'unknown'; refusing bootstrap-failure removal" "${TEST_ROOT}/unknown-agent-state/output" || fail "systemd error did not fail closed"
+
+echo "PASS: terminate-instance-after-bootstrap-failure"

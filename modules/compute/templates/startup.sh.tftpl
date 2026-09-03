@@ -2,23 +2,73 @@
 set -euo pipefail
 
 # Startup script for Buildkite agent VM instances
-# This script is run via Terraform's metadata_startup_script
+# This script is run via Terraform's metadata_startup_script.
 #
-# The image already has:
-# - buildkite-agent installed via apt
-# - Configuration templates at /etc/buildkite-agent/templates/
-# - Bootstrap script at /usr/local/bin/bootstrap-buildkite-agent
-#
-# We install the bootstrap script from the Terraform module to ensure it
-# always matches the module version, regardless of what was baked into the
-# machine image. This prevents version skew between the module and image.
+# Install the lifecycle files supplied by the Terraform module so they always
+# match the module version, regardless of what was baked into the image.
 
-echo "Installing Buildkite agent bootstrap script..."
+echo "Installing Buildkite agent lifecycle files..."
+
+# Pre-create the shared lifecycle files for the package unit's buildkite-agent
+# user. The GCP shutdown script runs as root and can use the same paths.
+install -o buildkite-agent -g buildkite-agent -m 0644 /dev/null /var/lib/buildkite-agent/shutdown.lock
+rm -f /var/lib/buildkite-agent/external-shutdown
 
 cat > /usr/local/bin/bootstrap-buildkite-agent << 'BOOTSTRAP_SCRIPT_EOF'
 ${bootstrap_script}
 BOOTSTRAP_SCRIPT_EOF
-chmod +x /usr/local/bin/bootstrap-buildkite-agent
+chmod 755 /usr/local/bin/bootstrap-buildkite-agent
+
+mkdir -p /etc/buildkite-agent/templates
+cat > /etc/buildkite-agent/templates/buildkite-agent.cfg.template << 'AGENT_CONFIG_TEMPLATE_EOF'
+${agent_config_template}
+AGENT_CONFIG_TEMPLATE_EOF
+chmod 644 /etc/buildkite-agent/templates/buildkite-agent.cfg.template
+
+cat > /etc/buildkite-agent/templates/buildkite-agent-env.template << 'AGENT_ENV_TEMPLATE_EOF'
+${agent_env_template}
+AGENT_ENV_TEMPLATE_EOF
+chmod 644 /etc/buildkite-agent/templates/buildkite-agent-env.template
+
+cat > /usr/local/bin/terminate-instance << 'TERMINATE_SCRIPT_EOF'
+${terminate_script}
+TERMINATE_SCRIPT_EOF
+chmod 755 /usr/local/bin/terminate-instance
+
+cat > /usr/local/bin/terminate-instance-after-bootstrap-failure << 'BOOTSTRAP_FAILURE_SCRIPT_EOF'
+${bootstrap_failure_script}
+BOOTSTRAP_FAILURE_SCRIPT_EOF
+chmod 755 /usr/local/bin/terminate-instance-after-bootstrap-failure
+
+cat > /usr/local/bin/terminate-instance-after-agent-exit << 'TERMINATION_LIFECYCLE_SCRIPT_EOF'
+${termination_lifecycle_script}
+TERMINATION_LIFECYCLE_SCRIPT_EOF
+chmod 755 /usr/local/bin/terminate-instance-after-agent-exit
+
+mkdir -p /etc/systemd/system/buildkite-agent.service.d
+SELF_TERMINATION_ENABLED="${enable_self_termination}"
+if [[ "$${SELF_TERMINATION_ENABLED}" == "true" ]]; then
+  cat > /etc/systemd/system/buildkite-agent.service.d/termination.conf << 'TERMINATION_DROP_IN_EOF'
+${termination_drop_in}
+TERMINATION_DROP_IN_EOF
+  chmod 644 /etc/systemd/system/buildkite-agent.service.d/termination.conf
+else
+  # A static MIG must retain its configured capacity when agents become idle.
+  rm -f /etc/systemd/system/buildkite-agent.service.d/termination.conf
+fi
+
+systemctl daemon-reload
 
 echo "Running Buildkite agent bootstrap..."
-exec /usr/local/bin/bootstrap-buildkite-agent
+if /usr/local/bin/bootstrap-buildkite-agent; then
+  exit 0
+fi
+
+if [[ "$${SELF_TERMINATION_ENABLED}" == "true" ]]; then
+  # With a scale-out-only autoscaler, a VM that cannot start its agent would
+  # never otherwise be reclaimed. Remove this exact member from the MIG; if that
+  # request also fails, leave the VM running for diagnosis.
+  echo "Buildkite agent bootstrap failed; requesting exact managed instance group removal" >&2
+  /usr/local/bin/terminate-instance-after-bootstrap-failure || true
+fi
+exit 1

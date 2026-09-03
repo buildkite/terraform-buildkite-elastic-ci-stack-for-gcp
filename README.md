@@ -10,8 +10,8 @@ Full documentation is available at <https://buildkite.com/docs/agent/v3/gcp/elas
 
 Repository documentation:
 
-- [Agent instance updates](docs/instance-updates.md) — includes the changed
-  template-rollout behavior and options for immediate updates
+- [Agent scaling and instance updates](docs/instance-updates.md) — describes
+  job-safe scale-in, idle-agent removal, and opportunistic template rollout
 - [GCP image release pipeline](docs/image-release-pipeline.md)
 
 ## Getting Started

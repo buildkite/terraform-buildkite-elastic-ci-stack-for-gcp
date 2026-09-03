@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly SHUTDOWN_LOCK_FILE="${BUILDKITE_SHUTDOWN_LOCK_FILE:-/var/lib/buildkite-agent/shutdown.lock}"
+readonly EXTERNAL_SHUTDOWN_MARKER="${BUILDKITE_EXTERNAL_SHUTDOWN_MARKER:-/var/lib/buildkite-agent/external-shutdown}"
+readonly TERMINATE_INSTANCE="${BUILDKITE_TERMINATE_INSTANCE_SCRIPT:-/usr/local/bin/terminate-instance}"
+
+if [[ -e "${EXTERNAL_SHUTDOWN_MARKER}" ]]; then
+  echo "GCP shutdown is already in progress; skipping managed instance group removal"
+  exit 0
+fi
+
+# Never delete a VM whose agent might be active: it could already be running a
+# job. Proceed only for explicit terminal states; fail closed on systemd errors
+# or any state that could still become active.
+agent_state="$(systemctl is-active buildkite-agent.service 2>/dev/null || true)"
+case "${agent_state}" in
+inactive | failed) ;;
+*)
+  echo "Buildkite agent state is '${agent_state:-unknown}'; refusing bootstrap-failure removal" >&2
+  exit 1
+  ;;
+esac
+
+# Serialize with ExecStopPost in case bootstrap failed after starting the agent
+# service and both paths attempt removal at nearly the same time. Recreate a
+# missing lock rather than suppressing this last-resort removal path.
+if ! { exec 9<"${SHUTDOWN_LOCK_FILE}"; } 2>/dev/null; then
+  echo "Warning: shutdown lock was missing; recreating it" >&2
+  : >"${SHUTDOWN_LOCK_FILE}"
+  chown buildkite-agent:buildkite-agent "${SHUTDOWN_LOCK_FILE}" 2>/dev/null || true
+  chmod 0644 "${SHUTDOWN_LOCK_FILE}" 2>/dev/null || true
+  exec 9<"${SHUTDOWN_LOCK_FILE}"
+fi
+if ! flock --nonblock 9; then
+  echo "Managed instance group removal is already in progress"
+  exit 0
+fi
+
+if ! "${TERMINATE_INSTANCE}"; then
+  echo "Unable to remove VM after Buildkite agent bootstrap failure" >&2
+  exit 1
+fi

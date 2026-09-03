@@ -28,18 +28,31 @@ wait_for_agent() {
   ! agent_is_running
 }
 
-readonly LOCK_FILE="${BUILDKITE_SHUTDOWN_LOCK_FILE:-/run/lock/buildkite-agent-shutdown.lock}"
+readonly LOCK_FILE="${BUILDKITE_SHUTDOWN_LOCK_FILE:-/var/lib/buildkite-agent/shutdown.lock}"
+readonly EXTERNAL_SHUTDOWN_MARKER="${BUILDKITE_EXTERNAL_SHUTDOWN_MARKER:-/var/lib/buildkite-agent/external-shutdown}"
 readonly NORMAL_GRACEFUL_TIMEOUT_SECONDS="${BUILDKITE_SHUTDOWN_NORMAL_GRACE_PERIOD:-100}"
 readonly SPOT_GRACEFUL_TIMEOUT_SECONDS="${BUILDKITE_SHUTDOWN_SPOT_GRACE_PERIOD:-10}"
 readonly FORCEFUL_TIMEOUT_SECONDS="${BUILDKITE_SHUTDOWN_FORCE_PERIOD:-10}"
 
-# A kernel-backed flock is released even if the first invocation is killed,
-# avoiding a stale marker that could suppress a later shutdown attempt.
-exec 9>"${LOCK_FILE}"
+# A kernel-backed flock is released even if the first invocation is killed.
+# The lock file is normally pre-created by image/module startup. Since this
+# script runs as root, recreate a missing file rather than skipping job drain.
+if ! { exec 9<"${LOCK_FILE}"; } 2>/dev/null; then
+  echo "Warning: shutdown lock was missing; recreating it" >&2
+  install -o buildkite-agent -g buildkite-agent -m 0644 /dev/null "${LOCK_FILE}"
+  exec 9<"${LOCK_FILE}"
+fi
 if ! flock --nonblock 9; then
   echo "--- Buildkite agent shutdown is already in progress"
   exit 0
 fi
+
+# Persist for the remainder of this boot so the post-stop lifecycle hook still
+# suppresses self-removal if the provider shutdown outlasts this script's drain
+# budget and releases the flock first.
+touch "${EXTERNAL_SHUTDOWN_MARKER}"
+chown buildkite-agent:buildkite-agent "${EXTERNAL_SHUTDOWN_MARKER}" 2>/dev/null || true
+chmod 0644 "${EXTERNAL_SHUTDOWN_MARKER}" 2>/dev/null || true
 
 echo "--- Gracefully stopping Buildkite agent"
 

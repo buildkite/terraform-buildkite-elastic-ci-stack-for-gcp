@@ -137,6 +137,17 @@ variable "buildkite_api_endpoint" {
   default     = "https://agent.buildkite.com/v3"
 }
 
+variable "agent_idle_timeout" {
+  description = "Seconds an autoscaled agent must remain idle before disconnecting and removing its VM from the managed instance group. Set to 0 to disable idle-based scale-in; because the native autoscaler is scale-out-only, capacity will then remain at its high-water mark. Ignored when autoscaling is disabled."
+  type        = number
+  default     = 600
+
+  validation {
+    condition     = var.agent_idle_timeout >= 0 && floor(var.agent_idle_timeout) == var.agent_idle_timeout
+    error_message = "Agent idle timeout must be a non-negative integer number of seconds."
+  }
+}
+
 variable "min_size" {
   description = "Minimum number of instances in the managed instance group"
   type        = number
@@ -171,7 +182,7 @@ variable "cooldown_period" {
 }
 
 variable "autoscaling_jobs_per_instance" {
-  description = "Target number of Buildkite jobs per instance for autoscaling"
+  description = "Number of unfinished Buildkite jobs assigned to each instance for autoscaling"
   type        = number
   default     = 1
 

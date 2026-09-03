@@ -156,13 +156,20 @@ steps:
 
       - label: ":bash: Lifecycle Script Tests"
         key: lifecycle-script-tests
-        command: bash tests/stop-agent-gracefully-test
+        command: |
+          bash tests/bootstrap-buildkite-agent-test
+          bash tests/startup-buildkite-agent-test
+          bash tests/stop-agent-gracefully-test
+          sudo bash tests/systemd-termination-semantics-test
         agents:
           queue: "gcp"
 
       - label: ":bash: Termination Script Tests"
         key: termination-script-tests
-        command: bash tests/terminate-instance-test
+        command: |
+          bash tests/terminate-instance-test
+          bash tests/terminate-instance-bootstrap-failure-test
+          bash tests/terminate-instance-lifecycle-test
         agents:
           queue: "gcp"
 

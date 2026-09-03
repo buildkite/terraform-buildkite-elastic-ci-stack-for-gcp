@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly REPO_ROOT
+readonly SCRIPT="${REPO_ROOT}/templates/scripts/bootstrap-buildkite-agent"
+TEST_ROOT="$(mktemp -d)"
+readonly TEST_ROOT
+
+cleanup() {
+  rm -rf "${TEST_ROOT}"
+}
+trap cleanup EXIT
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+run_case() {
+  local name="$1"
+  local idle_timeout="$2"
+  local expected_exit="${3:-0}"
+  local root="${TEST_ROOT}/${name}"
+  local bin="${root}/bin"
+  local actual_exit
+
+  mkdir -p "${bin}" "${root}/templates" "${root}/etc"
+  cp "${REPO_ROOT}/templates/config/buildkite-agent.cfg.template" "${root}/templates/buildkite-agent.cfg.template"
+  cp "${REPO_ROOT}/templates/config/buildkite-agent-env.template" "${root}/templates/buildkite-agent-env.template"
+
+  cat >"${bin}/curl" <<'EOF'
+#!/usr/bin/env bash
+case "${*: -1}" in
+  */instance/attributes/buildkite-token) printf '%s' test-token ;;
+  */instance/attributes/buildkite-token-secret) ;;
+  */instance/attributes/buildkite-agent-name) printf '%s' test-agent ;;
+  */instance/attributes/buildkite-queue) printf '%s' default ;;
+  */instance/attributes/buildkite-priority) printf '%s' 1 ;;
+  */instance/attributes/buildkite-tags) ;;
+  */instance/attributes/buildkite-api-endpoint) ;;
+  */instance/attributes/buildkite-enable-secret-manager) printf '%s' false ;;
+  */instance/attributes/buildkite-disconnect-after-job) printf '%s' false ;;
+  */instance/attributes/buildkite-disconnect-after-idle-timeout) printf '%s' "${TEST_IDLE_TIMEOUT}" ;;
+  */project/project-id) printf '%s' test-project ;;
+  */instance/zone) printf '%s' projects/test-project/zones/us-central1-a ;;
+  */instance/name) printf '%s' test-agent ;;
+  *) exit 22 ;;
+esac
+EOF
+
+  cat >"${bin}/sudo" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "tee" ]]; then
+  shift
+  cat >"$1"
+  exit 0
+fi
+if [[ "$1" == "systemctl" ]]; then
+  shift
+  printf '%s\n' "$*" >>"${SYSTEMCTL_CALLS_FILE}"
+  case "$*" in
+    "start apt-daily.timer apt-daily-upgrade.timer") exit "${TIMER_SETUP_EXIT:-0}" ;;
+    "start buildkite-agent") exit "${AGENT_START_EXIT:-0}" ;;
+    "is-active --quiet buildkite-agent") exit "${AGENT_HEALTH_EXIT:-0}" ;;
+  esac
+  exit 0
+fi
+if [[ "$1" == "chown" || "$1" == "chmod" ]]; then
+  exit 0
+fi
+if [[ "$1" == "sed" ]]; then
+  shift
+  if [[ "$1" == "-i" ]]; then
+    shift
+  fi
+  sed -i.bak "$@"
+  rm -f "${@: -1}.bak"
+  exit 0
+fi
+exec "$@"
+EOF
+
+  cat >"${bin}/sleep" <<'EOF'
+#!/usr/bin/env bash
+:
+EOF
+
+  cat >"${bin}/systemctl" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+
+  cat >"${bin}/hostname" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' test-agent
+EOF
+
+  chmod +x "${bin}"/*
+  : >"${root}/systemctl-calls"
+
+  # Rewrite fixed installation paths only inside the temporary script copy.
+  sed \
+    -e "s|/etc/buildkite-agent/templates|${root}/templates|g" \
+    -e "s|/etc/buildkite-agent/buildkite-agent.cfg|${root}/etc/buildkite-agent.cfg|g" \
+    -e "s|/etc/buildkite-agent/env|${root}/etc/env|g" \
+    "${SCRIPT}" >"${root}/bootstrap"
+
+  set +e
+  PATH="${bin}:${PATH}" \
+    TEST_IDLE_TIMEOUT="${idle_timeout}" \
+    SYSTEMCTL_CALLS_FILE="${root}/systemctl-calls" \
+    TIMER_SETUP_EXIT="${TIMER_SETUP_EXIT:-0}" \
+    AGENT_START_EXIT="${AGENT_START_EXIT:-0}" \
+    AGENT_HEALTH_EXIT="${AGENT_HEALTH_EXIT:-0}" \
+    bash "${root}/bootstrap" >"${root}/output" 2>&1
+  actual_exit=$?
+  set -e
+
+  [[ "${actual_exit}" == "${expected_exit}" ]] || {
+    cat "${root}/output" >&2
+    fail "${name} exited ${actual_exit}, expected ${expected_exit}"
+  }
+}
+
+run_case configured 123
+grep -Fxq 'disconnect-after-idle-timeout=123' "${TEST_ROOT}/configured/etc/buildkite-agent.cfg" || fail "configured timeout was not rendered"
+
+run_case disabled 0
+grep -Fxq 'disconnect-after-idle-timeout=0' "${TEST_ROOT}/disabled/etc/buildkite-agent.cfg" || fail "zero timeout was not rendered"
+
+run_case invalid invalid 1
+grep -Fq "must be a non-negative integer" "${TEST_ROOT}/invalid/output" || fail "invalid timeout was not rejected"
+
+TIMER_SETUP_EXIT=1 run_case timer-setup-failure 123 0
+grep -Fxq 'start buildkite-agent' "${TEST_ROOT}/timer-setup-failure/systemctl-calls" || fail "timer failure prevented agent start"
+grep -Fq 'Warning: could not start automatic security update timers' "${TEST_ROOT}/timer-setup-failure/output" || fail "timer failure did not warn"
+
+AGENT_START_EXIT=1 run_case agent-start-failure 123 1
+grep -Fq "Failed to start Buildkite agent" "${TEST_ROOT}/agent-start-failure/output" || fail "agent start failure was not reported"
+
+AGENT_HEALTH_EXIT=3 run_case agent-dies-after-start 123 0
+grep -Fq "Warning: Buildkite agent is not active shortly after start" "${TEST_ROOT}/agent-dies-after-start/output" || fail "post-start agent failure did not warn"
+
+python3 - "${TEST_ROOT}/configured/systemctl-calls" <<'PY'
+import sys
+calls = open(sys.argv[1]).read().splitlines()
+timers = calls.index("start apt-daily.timer apt-daily-upgrade.timer")
+agent = calls.index("start buildkite-agent")
+if timers >= agent:
+    raise SystemExit("agent started before timer setup completed")
+PY
+
+echo "PASS: bootstrap-buildkite-agent"

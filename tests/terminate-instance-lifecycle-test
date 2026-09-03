@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly REPO_ROOT
+readonly SCRIPT="${REPO_ROOT}/packer/linux/conf/buildkite-agent/scripts/terminate-instance-after-agent-exit"
+TEST_ROOT="$(mktemp -d)"
+readonly TEST_ROOT
+readonly FAKE_BIN="${TEST_ROOT}/bin"
+
+cleanup() {
+  rm -rf "${TEST_ROOT}"
+}
+trap cleanup EXIT
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+assert_contains() {
+  grep -Fq -- "$2" "$1" || fail "$1 does not contain: $2"
+}
+
+assert_line_count() {
+  local actual
+  actual="$(wc -l <"$1" | tr -d ' ')"
+  [[ "${actual}" == "$2" ]] || fail "$1 contains ${actual} lines, expected $2"
+}
+
+mkdir -p "${FAKE_BIN}"
+
+cat >"${FAKE_BIN}/flock" <<'EOF'
+#!/usr/bin/env bash
+exit "${FLOCK_EXIT:-0}"
+EOF
+
+cat >"${FAKE_BIN}/terminate-instance" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' called >>"${TERMINATE_CALLS_FILE}"
+exit "${TERMINATE_EXIT:-0}"
+EOF
+
+chmod +x "${FAKE_BIN}"/*
+
+run_case() {
+  local name="$1"
+  local expected_exit="${2:-0}"
+  local case_dir="${TEST_ROOT}/${name}"
+  local actual_exit
+
+  mkdir -p "${case_dir}"
+  : >"${case_dir}/terminate-calls"
+  if [[ "${LOCK_FILE_MISSING:-false}" != "true" ]]; then
+    : >"${case_dir}/shutdown.lock"
+  fi
+
+  set +e
+  PATH="${FAKE_BIN}:${PATH}" \
+    FLOCK_EXIT="${FLOCK_EXIT:-0}" \
+    TERMINATE_EXIT="${TERMINATE_EXIT:-0}" \
+    TERMINATE_CALLS_FILE="${case_dir}/terminate-calls" \
+    BUILDKITE_SHUTDOWN_LOCK_FILE="${case_dir}/shutdown.lock" \
+    BUILDKITE_EXTERNAL_SHUTDOWN_MARKER="${case_dir}/external-shutdown" \
+    BUILDKITE_TERMINATE_INSTANCE_SCRIPT="${FAKE_BIN}/terminate-instance" \
+    SERVICE_RESULT="${SERVICE_RESULT:-success}" \
+    EXIT_CODE="${EXIT_CODE:-exited}" \
+    EXIT_STATUS="${EXIT_STATUS:-0}" \
+    bash "${SCRIPT}" >"${case_dir}/output" 2>&1
+  actual_exit=$?
+  set -e
+
+  [[ "${actual_exit}" == "${expected_exit}" ]] || {
+    cat "${case_dir}/output" >&2
+    fail "${name} exited ${actual_exit}, expected ${expected_exit}"
+  }
+}
+
+run_case successful-removal
+assert_line_count "${TEST_ROOT}/successful-removal/terminate-calls" 1
+assert_contains "${TEST_ROOT}/successful-removal/output" "Buildkite agent exited (success, exited, 0)"
+
+SERVICE_RESULT=exit-code EXIT_STATUS=1 run_case crashed-agent
+assert_line_count "${TEST_ROOT}/crashed-agent/terminate-calls" 1
+assert_contains "${TEST_ROOT}/crashed-agent/output" "exit-code, exited, 1"
+
+FLOCK_EXIT=1 run_case external-shutdown-lock
+assert_line_count "${TEST_ROOT}/external-shutdown-lock/terminate-calls" 0
+assert_contains "${TEST_ROOT}/external-shutdown-lock/output" "GCP shutdown is already in progress"
+
+mkdir -p "${TEST_ROOT}/external-shutdown-marker"
+touch "${TEST_ROOT}/external-shutdown-marker/external-shutdown"
+run_case external-shutdown-marker
+assert_line_count "${TEST_ROOT}/external-shutdown-marker/terminate-calls" 0
+assert_contains "${TEST_ROOT}/external-shutdown-marker/output" "GCP shutdown is already in progress"
+
+# The production lock path must be writable by the service's buildkite-agent
+# user; /run/lock is root-owned on Debian.
+grep -Fq '/var/lib/buildkite-agent/shutdown.lock' "${SCRIPT}" || fail "default shutdown lock is not service-user writable"
+
+TERMINATE_EXIT=1 run_case failed-removal 1
+assert_line_count "${TEST_ROOT}/failed-removal/terminate-calls" 1
+assert_contains "${TEST_ROOT}/failed-removal/output" "allowing systemd to restart the Buildkite agent"
+
+LOCK_FILE_MISSING=true run_case missing-lock
+assert_line_count "${TEST_ROOT}/missing-lock/terminate-calls" 1
+assert_contains "${TEST_ROOT}/missing-lock/output" "shutdown lock was missing; recreating it"
+[[ -f "${TEST_ROOT}/missing-lock/shutdown.lock" ]] || fail "missing lock was not recreated"
+
+echo "PASS: terminate-instance-after-agent-exit"
