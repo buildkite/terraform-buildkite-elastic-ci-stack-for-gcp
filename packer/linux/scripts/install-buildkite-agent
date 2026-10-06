@@ -5,7 +5,11 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
 
-echo "Installing Buildkite agent via apt..."
+# Pinned Buildkite Agent version from the stable apt channel. Renovate updates
+# this value from buildkite/agent GitHub releases.
+AGENT_VERSION=4.1.0
+
+echo "Installing Buildkite agent ${AGENT_VERSION} via apt..."
 
 # Install dependencies
 sudo apt-get update
@@ -17,14 +21,15 @@ curl -fsSL "https://keys.openpgp.org/vks/v1/by-fingerprint/32A37959C2FA5C3C99EFB
   | sudo gpg --dearmor -o /usr/share/keyrings/buildkite-agent-archive-keyring.gpg
 sudo chmod 644 /usr/share/keyrings/buildkite-agent-archive-keyring.gpg
 
-echo "deb [signed-by=/usr/share/keyrings/buildkite-agent-archive-keyring.gpg] https://apt.buildkite.com/buildkite-agent oldstable main" \
+echo "deb [signed-by=/usr/share/keyrings/buildkite-agent-archive-keyring.gpg] https://apt.buildkite.com/buildkite-agent stable main" \
   | sudo tee /etc/apt/sources.list.d/buildkite-agent.list
 
 sudo apt-get update
 
-# Install buildkite-agent package
+# Install buildkite-agent package. Apt versions carry a build-number suffix
+# (for example 4.1.0-14574), so match any build of the pinned release.
 echo "Installing buildkite-agent package..."
-sudo apt-get install -y buildkite-agent
+sudo apt-get install -y "buildkite-agent=${AGENT_VERSION}-*"
 
 # Verify installation
 buildkite-agent --version
