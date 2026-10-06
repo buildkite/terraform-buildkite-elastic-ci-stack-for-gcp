@@ -321,3 +321,20 @@ variable "autoscaler_depends_on" {
   type        = any
   default     = []
 }
+
+variable "provisioning_model" {
+  description = "VM provisioning model: STANDARD or SPOT. Spot VMs are deleted on preemption and the agent gets a shortened graceful shutdown."
+  type        = string
+  default     = "STANDARD"
+
+  validation {
+    condition     = contains(["STANDARD", "SPOT"], var.provisioning_model)
+    error_message = "Provisioning model must be STANDARD or SPOT."
+  }
+}
+
+variable "enable_public_ip" {
+  description = "Give each agent an ephemeral external IP so it can reach the internet without Cloud NAT"
+  type        = bool
+  default     = false
+}

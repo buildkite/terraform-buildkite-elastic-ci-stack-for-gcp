@@ -437,3 +437,21 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "provisioning_model" {
+  description = "VM provisioning model: STANDARD or SPOT. Spot VMs are deleted on preemption and the agent gets a shortened graceful shutdown."
+  type        = string
+  default     = "STANDARD"
+}
+
+variable "enable_public_ip" {
+  description = "Give each agent an ephemeral external IP so it can reach the internet without Cloud NAT"
+  type        = bool
+  default     = false
+}
+
+variable "enable_nat" {
+  description = "Create a Cloud Router and Cloud NAT for outbound internet access. Disable when agents have external IPs."
+  type        = bool
+  default     = true
+}

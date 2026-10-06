@@ -24,6 +24,7 @@ module "networking" {
   instance_tag            = local.instance_tag
   enable_iap_access       = var.enable_iap_access
   enable_secondary_ranges = var.enable_secondary_ranges
+  enable_nat              = var.enable_nat
 }
 
 module "iam" {
@@ -61,6 +62,9 @@ module "compute" {
   image             = var.image
   root_disk_size_gb = var.root_disk_size_gb
   root_disk_type    = var.root_disk_type
+
+  provisioning_model = var.provisioning_model
+  enable_public_ip   = var.enable_public_ip
 
   # Scaling configuration
   min_size                      = var.min_size

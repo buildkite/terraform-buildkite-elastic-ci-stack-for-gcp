@@ -13,6 +13,8 @@ resource "google_compute_network" "vpc" {
 
 # Cloud Router for NAT Gateway
 resource "google_compute_router" "router" {
+  count = var.enable_nat ? 1 : 0
+
   project = var.project_id
   name    = "${var.network_name}-router"
   region  = var.region
@@ -21,11 +23,23 @@ resource "google_compute_router" "router" {
   description = "Router for NAT gateway"
 }
 
+moved {
+  from = google_compute_router.router
+  to   = google_compute_router.router[0]
+}
+
+moved {
+  from = google_compute_router_nat.nat
+  to   = google_compute_router_nat.nat[0]
+}
+
 # Cloud NAT (equivalent to AWS Internet Gateway + NAT Gateway)
 resource "google_compute_router_nat" "nat" {
+  count = var.enable_nat ? 1 : 0
+
   project                            = var.project_id
   name                               = "${var.network_name}-nat"
-  router                             = google_compute_router.router.name
+  router                             = google_compute_router.router[0].name
   region                             = var.region
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"

@@ -55,12 +55,12 @@ output "subnet_1_cidr" {
 
 output "router_name" {
   description = "Name of the Cloud Router"
-  value       = google_compute_router.router.name
+  value       = one(google_compute_router.router[*].name)
 }
 
 output "nat_name" {
   description = "Name of the Cloud NAT"
-  value       = google_compute_router_nat.nat.name
+  value       = one(google_compute_router_nat.nat[*].name)
 }
 
 output "ssh_firewall_rule_name" {

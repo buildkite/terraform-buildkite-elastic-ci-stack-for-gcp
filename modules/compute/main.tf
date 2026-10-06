@@ -38,6 +38,20 @@ resource "google_compute_instance_template" "buildkite_agent" {
   network_interface {
     network    = var.network_self_link
     subnetwork = var.subnet_self_link
+
+    dynamic "access_config" {
+      for_each = var.enable_public_ip ? [1] : []
+      content {}
+    }
+  }
+
+  # Spot VMs are deleted on preemption; the MIG recreates capacity.
+  scheduling {
+    provisioning_model          = var.provisioning_model
+    preemptible                 = var.provisioning_model == "SPOT"
+    automatic_restart           = var.provisioning_model != "SPOT"
+    on_host_maintenance         = var.provisioning_model == "SPOT" ? "TERMINATE" : "MIGRATE"
+    instance_termination_action = var.provisioning_model == "SPOT" ? "DELETE" : null
   }
 
   service_account {

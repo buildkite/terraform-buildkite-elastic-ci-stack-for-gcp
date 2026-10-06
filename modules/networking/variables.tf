@@ -61,3 +61,9 @@ variable "enable_secondary_ranges" {
   type        = bool
   default     = false
 }
+
+variable "enable_nat" {
+  description = "Create a Cloud Router and Cloud NAT for outbound internet access. Disable when agents have external IPs."
+  type        = bool
+  default     = true
+}
