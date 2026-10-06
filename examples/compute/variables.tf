@@ -88,12 +88,6 @@ variable "buildkite_agent_token_secret" {
   default     = ""
 }
 
-variable "buildkite_agent_release" {
-  description = "Buildkite agent release channel"
-  type        = string
-  default     = "stable"
-}
-
 variable "buildkite_queue" {
   description = "Buildkite queue name"
   type        = string
