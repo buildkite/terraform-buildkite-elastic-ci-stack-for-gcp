@@ -10,6 +10,8 @@ Full documentation is available at <https://buildkite.com/docs/agent/v3/gcp/elas
 
 Repository documentation:
 
+- [Upgrading to module v1](docs/upgrading-to-v1.md) — Buildkite Agent v4 and removed
+  module inputs
 - [Agent scaling and instance updates](docs/instance-updates.md) — describes
   job-safe scale-in, idle-agent removal, and opportunistic template rollout
 - [GCP image release pipeline](docs/image-release-pipeline.md)
