@@ -125,6 +125,11 @@ EOF
 
 run_case configured 123
 grep -Fxq 'disconnect-after-idle-timeout=123' "${TEST_ROOT}/configured/etc/buildkite-agent.cfg" || fail "configured timeout was not rendered"
+# The agent reads its token from the config; jobs load the env file.
+grep -Fxq 'token="test-token"' "${TEST_ROOT}/configured/etc/buildkite-agent.cfg" || fail "agent token was not rendered into the config"
+if grep -Fq 'test-token' "${TEST_ROOT}/configured/etc/env"; then
+  fail "agent registration token was written to the job environment file"
+fi
 
 run_case disabled 0
 grep -Fxq 'disconnect-after-idle-timeout=0' "${TEST_ROOT}/disabled/etc/buildkite-agent.cfg" || fail "zero timeout was not rendered"

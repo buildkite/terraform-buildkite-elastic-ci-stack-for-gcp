@@ -1,5 +1,5 @@
-# Environment variables for Buildkite agent
-BUILDKITE_AGENT_TOKEN=$BUILDKITE_TOKEN
+# Environment variables loaded into every job by the environment hook. Never
+# add the agent registration token here: jobs could use it to register agents.
 BUILDKITE_AGENT_NAME=$BUILDKITE_AGENT_NAME
 BUILDKITE_GCP_PROJECT_ID=$PROJECT_ID
 BUILDKITE_GCP_ZONE=$ZONE
