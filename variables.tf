@@ -89,17 +89,6 @@ variable "agent_idle_timeout" {
   }
 }
 
-variable "buildkite_agent_release" {
-  description = "Buildkite agent release channel: 'stable' (recommended), 'beta', or 'edge'"
-  type        = string
-  default     = "stable"
-
-  validation {
-    condition     = contains(["stable", "beta", "edge"], var.buildkite_agent_release)
-    error_message = "Buildkite agent release must be one of: stable, beta, edge."
-  }
-}
-
 variable "buildkite_api_endpoint" {
   description = "Buildkite API endpoint URL. Only change if using a custom endpoint."
   type        = string

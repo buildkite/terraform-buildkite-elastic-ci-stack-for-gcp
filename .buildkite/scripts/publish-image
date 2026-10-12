@@ -7,6 +7,12 @@ set -euo pipefail
 ARCH="${1:-x86-64}"
 PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
 
+# Each module major version publishes to its own family, so users referencing
+# a family only move to a new major when they change families. Update this
+# when main starts the next major version.
+MODULE_MAJOR_VERSION="v1"
+FAMILY="buildkite-ci-stack-${MODULE_MAJOR_VERSION}-${ARCH}"
+
 echo "--- :earth_americas: Publishing ${ARCH} image"
 echo "Project: ${PROJECT_ID}"
 
@@ -28,9 +34,9 @@ gcloud compute images add-iam-policy-binding "$IMAGE_NAME" \
   --role="roles/compute.imageUser"
 
 # Add image to family for easy reference
-echo "Adding image to family buildkite-ci-stack-${ARCH}"
+echo "Adding image to family ${FAMILY}"
 gcloud compute images update "$IMAGE_NAME" \
   --project="$PROJECT_ID" \
-  --family="buildkite-ci-stack-${ARCH}"
+  --family="${FAMILY}"
 
 echo "--- :white_check_mark: Successfully published ${ARCH} image: $IMAGE_NAME"

@@ -108,17 +108,6 @@ variable "buildkite_agent_token_secret" {
   default     = ""
 }
 
-variable "buildkite_agent_release" {
-  description = "Buildkite agent release channel (stable, beta, edge)"
-  type        = string
-  default     = "stable"
-
-  validation {
-    condition     = contains(["stable", "beta", "edge"], var.buildkite_agent_release)
-    error_message = "Buildkite agent release must be one of: stable, beta, edge."
-  }
-}
-
 variable "buildkite_queue" {
   description = "Buildkite queue name that agents will listen to"
   type        = string
