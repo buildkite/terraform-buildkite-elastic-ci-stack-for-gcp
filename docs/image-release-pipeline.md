@@ -58,12 +58,19 @@ jobs using a Buildkite artifact and build metadata.
 
 | Variant | Debian source | Packer builder | Test VM | Published family |
 | --- | --- | --- | --- | --- |
-| x86-64 | `debian-13` | `e2-standard-4` | `e2-small` | `buildkite-ci-stack-x86-64` |
-| ARM64 | `debian-13-arm64` | `t2a-standard-4` | `t2a-standard-1` | `buildkite-ci-stack-arm64` |
+| x86-64 | `debian-13` | `e2-standard-4` | `e2-small` | `buildkite-ci-stack-v1-x86-64` |
+| ARM64 | `debian-13-arm64` | `t2a-standard-4` | `t2a-standard-1` | `buildkite-ci-stack-v1-arm64` |
 
 Packer does not assign an image family. The publish job makes the image
 available to `allAuthenticatedUsers` and assigns its architecture-specific
 family only after validation passes.
+
+Each module major version has its own families, named
+`buildkite-ci-stack-<major>-<arch>`, so users who reference a family only move
+to a new major version when they change families. The publish script sets the
+major version; update it when `main` starts the next major version. Module v0.x
+images were published to `buildkite-ci-stack-x86-64` and
+`buildkite-ci-stack-arm64`, which no longer receive images.
 
 ## Infrastructure and authentication
 
@@ -179,7 +186,7 @@ Inspect the current published image for an architecture with:
 
 ```bash
 gcloud compute images describe-from-family \
-  buildkite-ci-stack-arm64 \
+  buildkite-ci-stack-v1-arm64 \
   --project=buildkite-gcp-stack
 ```
 

@@ -7,10 +7,10 @@ Module v1 deploys images that use Buildkite Agent v4. Read the [Agent v3 to v4 u
 1. Update your module inputs. Terraform rejects inputs that aren't in module v1:
    - Remove `buildkite_agent_release`. It never changed the installed agent, which comes from the image.
 2. If you set `image` to a custom image, rebuild it from this repository's [Packer configuration](../packer) at v1 and update the input in the same apply. An older image still boots with module v1, but it keeps Agent v3.
-3. If `image` references the `buildkite-ci-stack-x86-64` or `buildkite-ci-stack-arm64` image family, it moves to Agent v4 as soon as Agent v4 images are published, regardless of the module version.
+3. If `image` references the `buildkite-ci-stack-x86-64` or `buildkite-ci-stack-arm64` image family, change it to `buildkite-ci-stack-v1-x86-64` or `buildkite-ci-stack-v1-arm64`. Agent v4 images are only published to the v1 families; the old families stay on Agent v3 and no longer receive updates.
 4. Preview the update with `terraform plan`.
 
-If you need Agent v3, remain on module v0.x with a pinned `image`.
+If you need Agent v3, remain on module v0.x with a pinned `image` or one of the old families.
 
 ## Rolling out
 
