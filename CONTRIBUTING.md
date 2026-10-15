@@ -222,6 +222,7 @@ These changes go in their own pull requests, merged before the release pull requ
 
 - **Default image.** If anything under `packer/`, `templates/` or `goss.yaml` changed since the previous release, update the `image` default in both `variables.tf` and `examples/compute/variables.tf`.
   Use an image published by a `main` build of the [image-builder pipeline](docs/image-release-pipeline.md) that includes those changes, and link the image build in the pull request.
+  Files that `modules/compute/templates/startup.sh.tftpl` writes at boot, such as `templates/scripts/bootstrap-buildkite-agent`, don't need a new image, because the module replaces the image's copy on every instance.
 - **Major releases only.** Land these with the breaking change:
   - Set `MODULE_MAJOR_VERSION` in `.buildkite/scripts/publish-image` to `vX`, so `main` image builds publish to the `buildkite-ci-stack-vX-x86-64` and `buildkite-ci-stack-vX-arm64` families.
     The default image must come from one of these builds. Check with `gcloud compute images describe IMAGE_NAME --project buildkite-gcp-stack --format='value(family)'`.
@@ -232,7 +233,7 @@ These changes go in their own pull requests, merged before the release pull requ
 
 Create a branch named `release-vX.Y.Z` from `main` and make only these changes:
 
-- **Every release:** set `stack_version` in `modules/compute/main.tf` to `vX.Y.Z`. Agents report it as the `buildkite-gcp-stack` tag, so it must match the release tag exactly, including the leading `v`.
+- **Every release:** set `stack_version` in `modules/compute/main.tf` to `vX.Y.Z`. Agents report it as the `buildkite-gcp-stack` tag, so it must match the release tag exactly, including the leading `v`. Only release pull requests change `stack_version`; other pull requests leave it at the previous release.
 - **Major releases only:** set the module example in `README.md` to `version = "~> X.0"`.
 
 Open the pull request with the [release pull request template](.github/PULL_REQUEST_TEMPLATE/release.md), title it `Release vX.Y.Z`, and complete its checklist:
