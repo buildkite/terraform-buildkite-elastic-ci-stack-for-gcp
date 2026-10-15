@@ -20,7 +20,7 @@ Release pull request template. Follow the Release Process section of CONTRIBUTIN
 
 - [ ] `modules/compute/main.tf`: `stack_version = "vX.Y.Z"`, exactly matching the tag, including the leading `v`
 - [ ] Nothing else in this pull request changes module behavior
-- [ ] Default image: nothing under `packer/`, `templates/` or `goss.yaml` changed since vA.B.C, **or** the default `image` already points at an image published by a `main` build of the image-builder pipeline that includes those changes. Image build: <!-- link, or "not needed" -->
+- [ ] Default image: nothing baked into the image changed since vA.B.C (see CONTRIBUTING.md), **or** the default `image` already points at an image published by a `main` build of the image-builder pipeline that includes those changes. Image build: <!-- link, or "not needed" -->
 - [ ] The `image` defaults in `variables.tf` and `examples/compute/variables.tf` are identical
 
 ### Major releases only
