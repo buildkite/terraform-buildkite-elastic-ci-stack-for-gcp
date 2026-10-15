@@ -111,7 +111,7 @@ variable "machine_type" {
 variable "image" {
   description = "Source image for boot disk. Use a custom Packer-built image or a public Buildkite image."
   type        = string
-  default     = "buildkite-gcp-stack/buildkite-ci-stack-x86-64-2026-10-12-1312-63-bec2f32"
+  default     = "buildkite-gcp-stack/buildkite-ci-stack-x86-64-2026-10-15-1053-64-5a47d28"
 }
 
 variable "root_disk_size_gb" {
