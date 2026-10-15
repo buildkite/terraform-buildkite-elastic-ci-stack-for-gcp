@@ -199,7 +199,7 @@ terraform destroy -auto-approve
 
 Releases are managed by maintainers. The process includes:
 
-1. Version bump in relevant files
+1. Version bump in relevant files, including `stack_version` in `modules/compute/main.tf`, which agents report as the `buildkite-gcp-stack` tag
 2. Create GitHub release with notes
 3. Tag the release (semantic versioning: v0.1.0, v0.2.0, etc.)
 4. Update examples to reference new version

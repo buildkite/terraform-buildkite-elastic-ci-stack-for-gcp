@@ -8,6 +8,11 @@ locals {
   # See: https://github.com/buildkite/buildkite-agent-metrics/blob/main/backend/stackdriver.go
   # Note: This uses Terraform's built-in replace() function, not a shell command.
   metrics_org_slug = replace(var.buildkite_organization_slug, "-", "_")
+
+  # Reported to Buildkite as the buildkite-gcp-stack agent tag so we can measure
+  # stack adoption by version. Bump this to the release tag (with its leading "v")
+  # as part of each release.
+  stack_version = "v1.1.0"
 }
 
 resource "google_compute_instance_template" "buildkite_agent" {
@@ -53,6 +58,7 @@ resource "google_compute_instance_template" "buildkite_agent" {
     buildkite-tags                          = var.buildkite_agent_tags
     buildkite-api-endpoint                  = var.buildkite_api_endpoint
     buildkite-disconnect-after-idle-timeout = tostring(var.enable_autoscaling ? var.agent_idle_timeout : 0)
+    buildkite-stack-version                 = local.stack_version
     shutdown-script                         = file("${path.module}/../../packer/linux/conf/buildkite-agent/scripts/stop-agent-gracefully")
   }
 
