@@ -37,6 +37,7 @@ BUILDKITE_AGENT_NAME=$(get_metadata "buildkite-agent-name" "$(hostname)")
 BUILDKITE_QUEUE=$(get_metadata "buildkite-queue" "default")
 BUILDKITE_PRIORITY=$(get_metadata "buildkite-priority" "1")
 BUILDKITE_TAGS=$(get_metadata "buildkite-tags" "")
+BUILDKITE_STACK_VERSION=$(get_metadata "buildkite-stack-version" "")
 BUILDKITE_API_ENDPOINT=$(get_metadata "buildkite-api-endpoint" "")
 BUILDKITE_GCP_ENABLE_SECRET_MANAGER=$(get_metadata "buildkite-enable-secret-manager" "true")
 BUILDKITE_DISCONNECT_AFTER_JOB=$(get_metadata "buildkite-disconnect-after-job" "false")
@@ -55,6 +56,13 @@ if [[ "$BUILDKITE_GCP_ENABLE_SECRET_MANAGER" != "false" ]]; then
 fi
 if [[ "$BUILDKITE_DISCONNECT_AFTER_JOB" != "true" ]]; then
     BUILDKITE_DISCONNECT_AFTER_JOB="false"
+fi
+
+# Report the stack version to Buildkite as an agent tag. Only instances launched
+# by the Terraform module set this metadata, so ad-hoc image test instances
+# don't report a stack version.
+if [[ -n "$BUILDKITE_STACK_VERSION" ]]; then
+    BUILDKITE_TAGS="buildkite-gcp-stack=${BUILDKITE_STACK_VERSION}${BUILDKITE_TAGS:+,$BUILDKITE_TAGS}"
 fi
 
 # GCP context (for tags)
