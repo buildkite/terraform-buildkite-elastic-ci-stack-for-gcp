@@ -30,7 +30,7 @@ rendered="${TEST_ROOT}/startup"
 sed \
   -e 's|${bootstrap_script}|#!/usr/bin/env bash\nexit "${BOOTSTRAP_EXIT:-0}"|' \
   -e 's|${agent_config_template}|disconnect-after-idle-timeout=0|' \
-  -e 's|${agent_env_template}|BUILDKITE_AGENT_TOKEN=test-token|' \
+  -e 's|${agent_env_template}|BUILDKITE_AGENT_NAME=test-agent|' \
   -e 's|${terminate_script}|#!/usr/bin/env bash\nprintf "%s\\n" called >>"${TERMINATE_CALLS_FILE}"\nexit "${TERMINATE_EXIT:-0}"|' \
   -e 's|${bootstrap_failure_script}|#!/usr/bin/env bash\n"$(dirname "$0")/terminate-instance"|' \
   -e 's|${termination_lifecycle_script}|#!/usr/bin/env bash\nexit 0|' \
