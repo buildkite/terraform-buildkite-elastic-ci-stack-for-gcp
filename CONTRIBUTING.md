@@ -197,12 +197,70 @@ terraform destroy -auto-approve
 
 ## Release Process
 
-Releases are managed by maintainers. The process includes:
+Maintainers cut releases from `main`. A release is a `vX.Y.Z` Git tag on the merge commit of a release pull request. The release pull request only changes version numbers.
 
-1. Version bump in relevant files, including `stack_version` in `modules/compute/main.tf`, which agents report as the `buildkite-gcp-stack` tag
-2. Create GitHub release with notes
-3. Tag the release (semantic versioning: v0.1.0, v0.2.0, etc.)
-4. Update examples to reference new version
+> [!IMPORTANT]
+> The Terraform Registry publishes a new module version as soon as a `vX.Y.Z` tag is pushed. Publishing a GitHub release creates its tag, so it publishes the version too. Published versions can't be changed, so every change in a release must be on `main` before you publish the GitHub release.
+
+### 1. Choose the version
+
+Compare `main` with the previous release (`https://github.com/buildkite/terraform-buildkite-elastic-ci-stack-for-gcp/compare/vA.B.C...main`) and choose the release type:
+
+| Release type | Use when | Examples |
+| --- | --- | --- |
+| Major (`vX.0.0`) | Upgrading can break an existing configuration or deployment, or needs manual steps | Removing or renaming an input variable or output; changing a default incompatibly; a new Buildkite Agent major version; a new image family |
+| Minor (`vX.Y.0`) | New behavior that existing configurations don't need to change for | A new input variable whose default keeps existing behavior; a new output or agent tag; a default image with new features |
+| Patch (`vX.Y.Z`) | Backwards-compatible fixes only | Bug fixes; a default image with only bug or security fixes; documentation |
+
+If the changes span more than one type, use the largest. If you're unsure, use the larger type.
+
+Tags always have a leading `v` (for example `v1.2.0`). This process covers stable releases only.
+
+### 2. Merge prerequisites
+
+These changes go in their own pull requests, merged before the release pull request:
+
+- **Default image.** If anything under `packer/`, `templates/` or `goss.yaml` changed since the previous release, update the `image` default in both `variables.tf` and `examples/compute/variables.tf`.
+  Use an image published by a `main` build of the [image-builder pipeline](docs/image-release-pipeline.md) that includes those changes, and link the image build in the pull request.
+- **Major releases only.** Land these with the breaking change:
+  - Set `MODULE_MAJOR_VERSION` in `.buildkite/scripts/publish-image` to `vX`, so `main` image builds publish to the `buildkite-ci-stack-vX-x86-64` and `buildkite-ci-stack-vX-arm64` families.
+    The default image must come from one of these builds. Check with `gcloud compute images describe IMAGE_NAME --project buildkite-gcp-stack --format='value(family)'`.
+  - Update the image family names in `docs/image-release-pipeline.md`.
+  - Add `docs/upgrading-to-vX.md` and link it from `README.md`.
+
+### 3. Open and merge the release pull request
+
+Create a branch named `release-vX.Y.Z` from `main` and make only these changes:
+
+- **Every release:** set `stack_version` in `modules/compute/main.tf` to `vX.Y.Z`. Agents report it as the `buildkite-gcp-stack` tag, so it must match the release tag exactly, including the leading `v`.
+- **Major releases only:** set the module example in `README.md` to `version = "~> X.0"`.
+
+Open the pull request with the [release pull request template](.github/PULL_REQUEST_TEMPLATE/release.md), title it `Release vX.Y.Z`, and complete its checklist:
+
+```bash
+gh pr create --title "Release vX.Y.Z" --template release.md
+```
+
+In the browser, add `?quick_pull=1&template=release.md` to the compare URL, for example `https://github.com/buildkite/terraform-buildkite-elastic-ci-stack-for-gcp/compare/main...release-vX.Y.Z?quick_pull=1&template=release.md`.
+
+Merge the pull request after a maintainer approves it and CI passes.
+
+### 4. Publish the GitHub release
+
+Draft the release on the release pull request's merge commit. Use that commit even if other pull requests have merged since:
+
+```bash
+gh release create vX.Y.Z --draft --target MERGE_COMMIT_SHA --title vX.Y.Z --generate-notes
+```
+
+Review the draft notes. For a major release, start them with an upgrade callout that links `docs/upgrading-to-vX.md`. Then publish the draft. Publishing creates the `vX.Y.Z` tag, and the Terraform Registry publishes the version.
+
+### 5. Check the release
+
+- `vX.Y.Z` appears on the [Terraform Registry](https://registry.terraform.io/modules/buildkite/elastic-ci-stack-for-gcp/buildkite) within a few minutes. If it doesn't, select **Resync Module** under **Manage Module** on the registry page.
+- Fetch the published tag with `git fetch origin tag vX.Y.Z`, then check that `git show vX.Y.Z:modules/compute/main.tf | grep stack_version` shows `vX.Y.Z`.
+
+If anything is wrong after the release is published, don't move or delete the tag. Fix it on `main` and release a new patch version.
 
 ## CI/CD Pipeline
 
