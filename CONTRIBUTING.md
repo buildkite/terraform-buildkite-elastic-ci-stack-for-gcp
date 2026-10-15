@@ -258,7 +258,7 @@ Review the draft notes. For a major release, start them with an upgrade callout 
 ### 5. Check the release
 
 - `vX.Y.Z` appears on the [Terraform Registry](https://registry.terraform.io/modules/buildkite/elastic-ci-stack-for-gcp/buildkite) within a few minutes. If it doesn't, select **Resync Module** under **Manage Module** on the registry page.
-- `git show vX.Y.Z:modules/compute/main.tf | grep stack_version` shows `vX.Y.Z`.
+- Fetch the published tag with `git fetch origin tag vX.Y.Z`, then check that `git show vX.Y.Z:modules/compute/main.tf | grep stack_version` shows `vX.Y.Z`.
 
 If anything is wrong after the release is published, don't move or delete the tag. Fix it on `main` and release a new patch version.
 
