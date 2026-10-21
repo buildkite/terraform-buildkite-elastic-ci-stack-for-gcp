@@ -297,7 +297,7 @@ command:
   buildkite-agent --version:
     exit-status: 0
 
-  # Offline system/Python trust and patched v3 package + binary version gates.
+  # Offline system/Python trust and patched v4 package + binary version gates.
   /usr/local/share/buildkite-trust/check-image:
     exit-status: 0
     timeout: 30000

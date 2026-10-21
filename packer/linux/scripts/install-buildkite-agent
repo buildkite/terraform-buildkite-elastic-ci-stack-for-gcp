@@ -5,9 +5,10 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
 
-# Keep the v3 oldstable channel: the incident fix is available for both architectures.
-AGENT_VERSION=3.138.2
-AGENT_PACKAGE_VERSION=3.138.2-15170
+# Patched Agent v4 for the module-v1 image contract, available on both architectures.
+# Update the release and exact apt build suffix together.
+AGENT_VERSION=4.7.0
+AGENT_PACKAGE_VERSION=4.7.0-15166
 
 echo "Installing Buildkite agent ${AGENT_VERSION} via apt..."
 
@@ -21,7 +22,7 @@ curl -fsSL "https://keys.openpgp.org/vks/v1/by-fingerprint/32A37959C2FA5C3C99EFB
   | sudo gpg --dearmor -o /usr/share/keyrings/buildkite-agent-archive-keyring.gpg
 sudo chmod 644 /usr/share/keyrings/buildkite-agent-archive-keyring.gpg
 
-echo "deb [signed-by=/usr/share/keyrings/buildkite-agent-archive-keyring.gpg] https://apt.buildkite.com/buildkite-agent oldstable main" \
+echo "deb [signed-by=/usr/share/keyrings/buildkite-agent-archive-keyring.gpg] https://apt.buildkite.com/buildkite-agent stable main" \
   | sudo tee /etc/apt/sources.list.d/buildkite-agent.list
 
 sudo apt-get update

@@ -5,11 +5,13 @@ TRUST_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ca_version=$(dpkg-query -W -f='${Version}' ca-certificates)
 dpkg --compare-versions "$ca_version" ge 20250419+deb13u1
 agent_version=$(dpkg-query -W -f='${Version}' buildkite-agent)
-dpkg --compare-versions "$agent_version" ge 3.138.2
-dpkg --compare-versions "$agent_version" lt 4
+dpkg --compare-versions "$agent_version" ge 4.7.0
+dpkg --compare-versions "$agent_version" lt 5
+# Agent v4 appends +build.commit metadata to its semantic version.
 binary_version=$(buildkite-agent --version | awk '{print $3}')
-dpkg --compare-versions "$binary_version" ge 3.138.2
-dpkg --compare-versions "$binary_version" lt 4
+binary_version=${binary_version%%+*}
+dpkg --compare-versions "$binary_version" ge 4.7.0
+dpkg --compare-versions "$binary_version" lt 5
 
 # Debian certifi (including Debian pip's effective certifi) uses the system
 # bundle. Do not mistake dormant vendored PEM files for the effective CA store.
