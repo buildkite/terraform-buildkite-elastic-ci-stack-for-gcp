@@ -7,9 +7,10 @@
   "labels": ["dependencies"],
   "packageRules": [
     {
-      "description": "Keep the agent on v3 oldstable; update the exact apt build suffix with the release pin",
+      "description": "Keep v3 oldstable; manually update both the release and exact apt build suffix together",
       "matchDepNames": ["buildkite/agent"],
-      "allowedVersions": "<4"
+      "allowedVersions": "<4",
+      "enabled": false
     },
     {
       "description": "Group all Terraform provider updates together",
