@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Image gates shared by both architectures. No network or credentials required.
+set -euo pipefail
+TRUST_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+ca_version=$(dpkg-query -W -f='${Version}' ca-certificates)
+dpkg --compare-versions "$ca_version" ge 20250419+deb13u1
+agent_version=$(dpkg-query -W -f='${Version}' buildkite-agent)
+dpkg --compare-versions "$agent_version" ge 4.7.0
+dpkg --compare-versions "$agent_version" lt 5
+# Agent v4 appends +build.commit metadata to its semantic version.
+binary_version=$(buildkite-agent --version | awk '{print $3}')
+binary_version=${binary_version%%+*}
+dpkg --compare-versions "$binary_version" ge 4.7.0
+dpkg --compare-versions "$binary_version" lt 5
+
+# Debian certifi (including Debian pip's effective certifi) uses the system
+# bundle. Do not mistake dormant vendored PEM files for the effective CA store.
+mapfile -t bundles < <(python3 - <<'PY'
+import ssl
+import certifi
+from pip._vendor.requests.utils import DEFAULT_CA_BUNDLE_PATH
+print('/etc/ssl/certs/ca-certificates.crt')
+print(ssl.get_default_verify_paths().cafile or '/missing-default-ca-bundle')
+print(certifi.where())
+print(DEFAULT_CA_BUNDLE_PATH)
+PY
+)
+# Process substitution errors must not silently omit the Python client gates.
+[[ ${#bundles[@]} -eq 4 ]]
+python3 "$TRUST_DIR/check-trust.py" "${bundles[@]}"

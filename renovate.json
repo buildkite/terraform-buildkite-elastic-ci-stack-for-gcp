@@ -7,6 +7,12 @@
   "labels": ["dependencies"],
   "packageRules": [
     {
+      "description": "Keep module v1 on Agent v4; manually update the release and exact apt build suffix together",
+      "matchDepNames": ["buildkite/agent"],
+      "allowedVersions": ">=4.7.0 <5",
+      "enabled": false
+    },
+    {
       "description": "Group all Terraform provider updates together",
       "matchManagers": ["terraform"],
       "matchPackagePatterns": ["*"],

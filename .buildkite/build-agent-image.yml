@@ -33,7 +33,8 @@ definitions:
         - "packer/linux/conf/buildkite-agent/hooks/*"
         - "packer/linux/conf/buildkite-agent/scripts/*"
         - "packer/linux/conf/docker/scripts/*"
-        - "tests/*"
+        - "tests/*-test"
+        - "packer/trust/check-image"
 
 env:
   GCP_PROJECT_ID: "buildkite-gcp-stack"
@@ -144,6 +145,15 @@ steps:
         command: .buildkite/scripts/validate_packer
         plugins:
           - *packer
+        agents:
+          queue: "gcp"
+
+      - label: ":lock: Offline Trust Tests"
+        key: trust-tests
+        command: python3 -m unittest discover -s tests/trust -v
+        plugins:
+          - docker#v5.14.0:
+              image: "python:3.12-bookworm"
         agents:
           queue: "gcp"
 

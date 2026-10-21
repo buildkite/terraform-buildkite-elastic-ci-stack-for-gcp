@@ -28,7 +28,8 @@ definitions:
     shellcheck#v1.4.0:
       files:
         - ".buildkite/scripts/*"
-        - "packer/linux/scripts/*.sh"
+        - "packer/linux/scripts/*"
+        - "packer/trust/check-image"
 
 steps:
   - group: ":terraform: Root Modules"
@@ -101,6 +102,13 @@ steps:
         command: .buildkite/scripts/validate_packer
         plugins:
           - *packer
+
+      - label: ":lock: Offline Trust Tests"
+        key: trust-tests
+        command: python3 -m unittest discover -s tests/trust -v
+        plugins:
+          - docker#v5.14.0:
+              image: "python:3.12-bookworm"
 
       - label: ":bash: ShellCheck"
         key: shellcheck

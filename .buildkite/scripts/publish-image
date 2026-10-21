@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2317 # Publication below is deliberately unreachable until SDK qualification.
 set -euo pipefail
 
 # Publish a GCP VM image (make public and add to family)
@@ -12,6 +13,23 @@ PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
 # when main starts the next major version.
 MODULE_MAJOR_VERSION="v1"
 FAMILY="buildkite-ci-stack-${MODULE_MAJOR_VERSION}-${ARCH}"
+
+# Module-v1 families promise Agent v4. Never silently change agent major.
+# Check before metadata lookup or cloud mutation.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AGENT_VERSION="$(sed -n 's/^AGENT_VERSION=//p' "$SCRIPT_DIR/../../packer/linux/scripts/install-buildkite-agent")"
+if [[ "$MODULE_MAJOR_VERSION" == "v1" && "$AGENT_VERSION" != 4.* ]]; then
+  echo "Release blocked: Agent $AGENT_VERSION cannot publish to the Agent v4 family $FAMILY" >&2
+  exit 1
+fi
+
+# Deliberate release stop: guest and builder SDK trust are not qualified.
+# Remove only after the acceptance criteria in packer/trust/README.md are met.
+require_qualified_sdk() {
+  echo "Release blocked: Google Cloud SDK trust remains unqualified; see packer/trust/README.md" >&2
+  exit 1
+}
+require_qualified_sdk
 
 echo "--- :earth_americas: Publishing ${ARCH} image"
 echo "Project: ${PROJECT_ID}"
