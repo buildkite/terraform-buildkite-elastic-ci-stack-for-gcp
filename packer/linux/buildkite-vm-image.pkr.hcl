@@ -33,11 +33,6 @@ variable "build_number" {
   default = "none"
 }
 
-variable "agent_version" {
-  type    = string
-  default = "devel"
-}
-
 variable "is_released" {
   type    = bool
   default = false
@@ -69,6 +64,9 @@ variable "service_account_email" {
 }
 
 locals {
+  # Read the actual installer pin; labels must never select or misreport a version.
+  agent_version = trimspace(regex("(?m)^AGENT_VERSION=([^\\n]+)", file("${path.root}/scripts/install-buildkite-agent"))[0])
+
   builder_machine_type = var.machine_type != "" ? var.machine_type : (var.arch == "arm64" ? "t2a-standard-4" : "e2-standard-4")
 }
 
@@ -108,7 +106,7 @@ source "googlecompute" "buildkite-ci-stack" {
     name          = "buildkite-ci-stack-${var.arch}"
     os_version    = "debian-13"
     build_number  = var.build_number
-    agent_version = replace(var.agent_version, ".", "-")
+    agent_version = replace(local.agent_version, ".", "-")
     is_released   = var.is_released ? "true" : "false"
     component     = "buildkite-ci-stack"
     version       = "0-1-0"
@@ -142,6 +140,17 @@ build {
       "mkdir -p /tmp/plugins /tmp/build",
       "echo 'Created empty directories for plugins and build artifacts'"
     ]
+  }
+
+  # Debian system trust must be fixed before any third-party HTTPS downloads.
+  provisioner "file" {
+    destination = "/tmp/trust"
+    source      = "../trust"
+  }
+
+  provisioner "shell" {
+    remote_folder = "/var/tmp"
+    script        = "scripts/remediate-trust"
   }
 
   # Essential utilities & updates
