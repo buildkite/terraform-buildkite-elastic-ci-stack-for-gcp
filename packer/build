@@ -197,6 +197,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Retain the legacy label flag, but never let it contradict the installer.
+PINNED_AGENT_VERSION="$(sed -n 's/^AGENT_VERSION=//p' "$SCRIPT_DIR/linux/scripts/install-buildkite-agent")"
+if [[ "$AGENT_VERSION" != "$PINNED_AGENT_VERSION" ]]; then
+    log_error "--agent-version is only a label; it must match installer version $PINNED_AGENT_VERSION"
+    exit 1
+fi
+
 # Check required parameters
 if [[ -z "$PROJECT_ID" ]]; then
     log_error "Project ID is required"
@@ -275,7 +282,6 @@ if packer build \
     -var "machine_type=$MACHINE_TYPE" \
     -var "arch=$ARCH" \
     -var "build_number=$BUILD_NUMBER" \
-    -var "agent_version=$AGENT_VERSION" \
     -var "service_account_email=$SERVICE_ACCOUNT_EMAIL" \
     buildkite-vm-image.pkr.hcl; then
     log_info "Image build completed successfully!"
