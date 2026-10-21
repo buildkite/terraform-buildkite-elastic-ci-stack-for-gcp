@@ -78,6 +78,20 @@ class TrustTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("must match installer version", result.stdout)
 
+    def test_v3_config_and_publish_guard(self):
+        import subprocess
+        config = (ROOT / "templates/config/buildkite-agent.cfg.template").read_text()
+        self.assertIn("cancel-grace-period=10", config)
+        self.assertNotIn("cancel-signal-timeout", config)
+        self.assertNotIn("cancel-cleanup-timeout", config)
+        for arch in ("x86-64", "arm64"):
+            result = subprocess.run(
+                ["bash", str(ROOT / ".buildkite/scripts/publish-image"), arch],
+                capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("cannot publish to the Agent v4 family", result.stderr)
+
     def test_image_version_gates(self):
         import os
         import subprocess
