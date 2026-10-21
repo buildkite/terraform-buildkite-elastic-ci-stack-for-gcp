@@ -26,7 +26,8 @@ malformed fixtures or expiry from producing false negatives.
 
 Agent installation uses **v3 oldstable**, exact apt package `3.138.2-15170` for
 amd64 and arm64. Future updates must change both release and apt-build pins;
-Renovate is constrained to v3. The image's `agent_version` label is read directly
+Renovate is constrained to v3 and disabled for this dependency until it can
+update the exact apt build suffix together with the release. The image's `agent_version` label is read directly
 from the installer; the legacy build flag rejects contradictory labels. No Buildkite CLI is installed or added.
 
 Debian's distro certifi and pip use `/etc/ssl/certs/ca-certificates.crt`; dormant
