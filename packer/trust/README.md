@@ -52,6 +52,14 @@ it is not wired to any SDK or runtime bundle.
 
 ## Required before release
 
+Latest main now targets module v1/Agent v4, unlike the initial investigation
+baseline. This draft deliberately implements the requested patched **v3** agent.
+Its config uses v3's supported `cancel-grace-period=10` (9 seconds before SIGKILL),
+not the v4-only cancellation keys. The publish script refuses to publish this v3
+agent to the v1/Agent v4 families, before any cloud mutation. Resolve the intended
+maintenance/release branch and family targeting before enabling publication;
+this draft does not change families or claim compatibility with the v1 contract.
+
 - Resolve and validate guest **and builder Google Cloud SDK** trust, including
   independent certifi, pip/grpc, gsutil/boto and httplib2 stores/fallbacks. The
   Alpine/Packer builder's system trust is also unverified in this change.
