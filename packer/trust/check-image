@@ -28,3 +28,4 @@ PY
 # Process substitution errors must not silently omit the Python client gates.
 [[ ${#bundles[@]} -eq 4 ]]
 python3 "$TRUST_DIR/check-trust.py" "${bundles[@]}"
+python3 "$TRUST_DIR/check-sdk.py" --sdk-root /usr/lib/google-cloud-sdk

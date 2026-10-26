@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2317 # Publication below is deliberately unreachable until SDK qualification.
+# shellcheck disable=SC2317 # Publication remains blocked pending live image qualification.
 set -euo pipefail
 
 # Publish a GCP VM image (make public and add to family)
@@ -23,13 +23,14 @@ if [[ "$MODULE_MAJOR_VERSION" == "v1" && "$AGENT_VERSION" != 4.* ]]; then
   exit 1
 fi
 
-# Deliberate release stop: guest and builder SDK trust are not qualified.
-# Remove only after the acceptance criteria in packer/trust/README.md are met.
-require_qualified_sdk() {
-  echo "Release blocked: Google Cloud SDK trust remains unqualified; see packer/trust/README.md" >&2
+# SDK 590.0.1 passed local package/builder checks, but actual GCP images have
+# not been qualified. Remove this stop only after both architectures pass the
+# image/lifecycle acceptance criteria in packer/trust/README.md.
+require_qualified_images() {
+  echo "Release blocked: GCP image qualification remains incomplete; see packer/trust/README.md" >&2
   exit 1
 }
-require_qualified_sdk
+require_qualified_images
 
 echo "--- :earth_americas: Publishing ${ARCH} image"
 echo "Project: ${PROJECT_ID}"

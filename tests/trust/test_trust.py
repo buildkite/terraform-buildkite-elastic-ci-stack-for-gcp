@@ -103,7 +103,7 @@ class TrustTests(unittest.TestCase):
             for version, message in [
                 ("3.138.2", "cannot publish to the Agent v4 family"),
                 ("5.0.0", "cannot publish to the Agent v4 family"),
-                ("4.7.0", "Google Cloud SDK trust remains unqualified"),
+                ("4.7.0", "GCP image qualification remains incomplete"),
             ]:
                 installer.write_text(f"AGENT_VERSION={version}\n")
                 for arch in ("x86-64", "arm64"):
@@ -115,6 +115,25 @@ class TrustTests(unittest.TestCase):
                         self.assertEqual(result.returncode, 1)
                         self.assertIn(message, result.stderr)
                         self.assertNotIn("UNEXPECTED EXTERNAL COMMAND", result.stderr)
+
+    def test_sdk_installation_and_gate_wiring(self):
+        installer = (ROOT / "packer/linux/scripts/install-gcp-tools").read_text()
+        self.assertIn('GOOGLE_CLOUD_CLI_VERSION="590.0.1-0"', installer)
+        for package in ("google-cloud-cli", "google-cloud-cli-gke-gcloud-auth-plugin"):
+            self.assertIn(f'"{package}=${{GOOGLE_CLOUD_CLI_VERSION}}"', installer)
+        image_gate = (TRUST / "check-image").read_text()
+        self.assertIn('check-sdk.py" --sdk-root /usr/lib/google-cloud-sdk', image_gate)
+        goss = (ROOT / "goss.yaml").read_text()
+        self.assertIn("check-sdk-transports.py --sdk-root /usr/lib/google-cloud-sdk", goss)
+        builder = (ROOT / ".buildkite/scripts/build-image").read_text()
+        for check in ("check-trust.py", "check-sdk.py", "check-sdk-transports.py"):
+            self.assertLess(builder.index(check), builder.index("./build "))
+        dockerfile = (ROOT / ".buildkite/Dockerfile").read_text()
+        self.assertIn("FROM hashicorp/packer:1.16.2", dockerfile)
+        self.assertIn("google-cloud-cli-590.0.1-linux-", dockerfile)
+        self.assertIn("sha256sum -c -", dockerfile)
+        self.assertIn("ca-certificates-bundle>=20261020-r0", dockerfile)
+        self.assertNotIn("https://sdk.cloud.google.com", dockerfile)
 
     def test_renovate_cannot_desynchronize_pins(self):
         import json

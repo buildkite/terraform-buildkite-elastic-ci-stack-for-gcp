@@ -7,12 +7,21 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 
 echo "Installing GCP-specific tools and utilities..."
 
-sudo -E apt-get update -y
-sudo -E apt-get install -yq google-cloud-cli
+# Keep the guest SDK and auth plugin on the same patched upstream release.
+readonly GOOGLE_CLOUD_CLI_VERSION="590.0.1-0"
 
-# Install gcloud compute instance management tools
-echo "Installing gcloud compute components..."
-sudo -E apt-get install -yq google-cloud-cli-gke-gcloud-auth-plugin
+sudo -E apt-get update -y
+sudo -E apt-get install -yq \
+  "google-cloud-cli=${GOOGLE_CLOUD_CLI_VERSION}" \
+  "google-cloud-cli-gke-gcloud-auth-plugin=${GOOGLE_CLOUD_CLI_VERSION}"
+
+for package in google-cloud-cli google-cloud-cli-gke-gcloud-auth-plugin; do
+  installed_version=$(dpkg-query --show --showformat='${Version}' "$package")
+  if [[ "$installed_version" != "$GOOGLE_CLOUD_CLI_VERSION" ]]; then
+    echo "Expected $package version $GOOGLE_CLOUD_CLI_VERSION, found $installed_version" >&2
+    exit 1
+  fi
+done
 
 # Create a simple metadata service helper (equivalent to AWS instance metadata)
 echo "Creating GCP metadata helper script..."
