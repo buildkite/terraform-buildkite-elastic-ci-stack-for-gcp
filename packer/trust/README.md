@@ -1,7 +1,7 @@
 # Image trust checks
 
 The image build updates Debian system trust before downloading third-party
-software, pins Buildkite Agent 4.7.0 (`4.7.0-15166`), and pins Google Cloud CLI
+software, pins Buildkite Agent 4.8.0 (`4.8.0-15189`), and pins Google Cloud CLI
 590.0.1 (`590.0.1-0`, including its GKE authentication plugin). Both x86-64 and
 arm64 images use the existing module-v1/Agent-v4 release contract.
 

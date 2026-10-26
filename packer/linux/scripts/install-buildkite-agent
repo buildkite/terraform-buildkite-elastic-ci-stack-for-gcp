@@ -7,8 +7,8 @@ export DEBCONF_NONINTERACTIVE_SEEN=true
 
 # Patched Agent v4 for the module-v1 image contract, available on both architectures.
 # Update the release and exact apt build suffix together.
-AGENT_VERSION=4.7.0
-AGENT_PACKAGE_VERSION=4.7.0-15166
+AGENT_VERSION=4.8.0
+AGENT_PACKAGE_VERSION=4.8.0-15189
 
 echo "Installing Buildkite agent ${AGENT_VERSION} via apt..."
 
