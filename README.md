@@ -32,6 +32,23 @@ module "elastic-ci-stack-for-gcp" {
 }
 ```
 
+### GPU instances
+
+GPU instances cannot live migrate during host maintenance. Set
+`on_host_maintenance = "TERMINATE"` alongside the GPU machine type in your module
+configuration, for example:
+
+```hcl
+  machine_type        = "a2-highgpu-1g"
+  on_host_maintenance = "TERMINATE"
+```
+
+The default is `MIGRATE`, preserving live migration for existing CPU fleets.
+`TERMINATE` stops the VM during host maintenance and can interrupt running builds;
+automatic restart remains enabled. Choose zones that support your GPU and use a
+Buildkite agent image with the required NVIDIA drivers (and NVIDIA Container
+Toolkit for GPU-enabled Docker builds); the default image does not install them.
+
 ## Contributing
 
 See [Contributing Guidelines](CONTRIBUTING.md).
