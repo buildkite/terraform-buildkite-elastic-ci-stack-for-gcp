@@ -108,6 +108,17 @@ variable "machine_type" {
   }
 }
 
+variable "on_host_maintenance" {
+  description = "Action to take during host maintenance: MIGRATE or TERMINATE. GPU instances require TERMINATE, which can interrupt running builds."
+  type        = string
+  default     = "MIGRATE"
+
+  validation {
+    condition     = contains(["MIGRATE", "TERMINATE"], var.on_host_maintenance)
+    error_message = "Host maintenance policy must be MIGRATE or TERMINATE."
+  }
+}
+
 variable "image" {
   description = "Source image for boot disk. Use a custom Packer-built image or a public Buildkite image."
   type        = string

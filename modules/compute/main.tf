@@ -22,6 +22,11 @@ resource "google_compute_instance_template" "buildkite_agent" {
   machine_type = var.machine_type
   region       = var.region
 
+  scheduling {
+    on_host_maintenance = var.on_host_maintenance
+    automatic_restart   = true
+  }
+
   tags = [var.instance_tag]
 
   labels = merge(

@@ -51,6 +51,12 @@ variable "machine_type" {
   default     = "n1-standard-2"
 }
 
+variable "on_host_maintenance" {
+  description = "Action to take during host maintenance: MIGRATE or TERMINATE. GPU instances require TERMINATE, which can interrupt running builds."
+  type        = string
+  default     = "MIGRATE"
+}
+
 variable "image" {
   description = "Source image for boot disk"
   type        = string
