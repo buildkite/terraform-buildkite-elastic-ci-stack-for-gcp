@@ -150,10 +150,14 @@ steps:
 
       - label: ":lock: Offline Trust Tests"
         key: trust-tests
-        command: python3 -m unittest discover -s tests/trust -v
+        command: python3 -B -m unittest discover -s tests/trust -v
         plugins:
           - docker#v5.14.0:
               image: "python:3.12-bookworm"
+              propagate-uid-gid: true
+              environment:
+                - "PYTHONDONTWRITEBYTECODE=1"
+              chown: true
         agents:
           queue: "gcp"
 

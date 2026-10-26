@@ -4,26 +4,31 @@ definitions:
       image: "hashicorp/terraform:1.13"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   tflint: &tflint
     docker#v5.14.0:
       image: "ghcr.io/terraform-linters/tflint:v0.59.1"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   tfsec: &tfsec
     docker#v5.14.0:
       image: "aquasec/tfsec:v1.28"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   packer: &packer
     docker#v5.14.0:
       image: "hashicorp/packer:1.11"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
+      chown: true
   markdownlint: &markdownlint
     docker#v5.14.0:
       image: "davidanson/markdownlint-cli2:v0.18.1"
       workdir: "/workdir"
       command: [".", "--config", ".markdownlint.json"]
+      chown: true
   shellcheck: &shellcheck
     shellcheck#v1.4.0:
       files:
@@ -105,10 +110,14 @@ steps:
 
       - label: ":lock: Offline Trust Tests"
         key: trust-tests
-        command: python3 -m unittest discover -s tests/trust -v
+        command: python3 -B -m unittest discover -s tests/trust -v
         plugins:
           - docker#v5.14.0:
               image: "python:3.12-bookworm"
+              propagate-uid-gid: true
+              environment:
+                - "PYTHONDONTWRITEBYTECODE=1"
+              chown: true
 
       - label: ":bash: ShellCheck"
         key: shellcheck

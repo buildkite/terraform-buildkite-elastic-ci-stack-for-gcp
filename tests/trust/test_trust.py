@@ -135,6 +135,16 @@ class TrustTests(unittest.TestCase):
         self.assertIn("ca-certificates-bundle>=20261020-r0", dockerfile)
         self.assertNotIn("https://sdk.cloud.google.com", dockerfile)
 
+    def test_trust_tests_do_not_leave_root_owned_bytecode(self):
+        for name in ("pipeline.yml", "build-agent-image.yml"):
+            with self.subTest(pipeline=name):
+                pipeline = (ROOT / ".buildkite" / name).read_text()
+                step = pipeline.split('key: trust-tests', 1)[1].split('      - label:', 1)[0]
+                self.assertIn("command: python3 -B -m unittest", step)
+                self.assertIn('"PYTHONDONTWRITEBYTECODE=1"', step)
+                self.assertIn("propagate-uid-gid: true", step)
+                self.assertIn("chown: true", step)
+
     def test_renovate_cannot_desynchronize_pins(self):
         import json
         config = json.loads((ROOT / "renovate.json").read_text())
