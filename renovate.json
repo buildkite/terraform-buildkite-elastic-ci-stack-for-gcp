@@ -7,6 +7,11 @@
   "labels": ["dependencies"],
   "packageRules": [
     {
+      "description": "Keep Agent updates within patched v4 releases",
+      "matchDepNames": ["buildkite/agent"],
+      "allowedVersions": ">=4.7.0 <5"
+    },
+    {
       "description": "Group all Terraform provider updates together",
       "matchManagers": ["terraform"],
       "matchPackagePatterns": ["*"],

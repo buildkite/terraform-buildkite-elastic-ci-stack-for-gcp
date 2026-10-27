@@ -13,6 +13,15 @@ PROJECT_ID="${GCP_PROJECT_ID:-buildkite-gcp-stack}"
 MODULE_MAJOR_VERSION="v1"
 FAMILY="buildkite-ci-stack-${MODULE_MAJOR_VERSION}-${ARCH}"
 
+# Images published to buildkite-ci-stack-v1-* must use Agent v4.
+# Reject other Agent major versions before making the image public.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AGENT_VERSION="$(sed -n 's/^AGENT_VERSION=//p' "$SCRIPT_DIR/../../packer/linux/scripts/install-buildkite-agent")"
+if [[ "$MODULE_MAJOR_VERSION" == "v1" && "$AGENT_VERSION" != 4.* ]]; then
+  echo "Release blocked: Agent $AGENT_VERSION cannot publish to the Agent v4 family $FAMILY" >&2
+  exit 1
+fi
+
 echo "--- :earth_americas: Publishing ${ARCH} image"
 echo "Project: ${PROJECT_ID}"
 
