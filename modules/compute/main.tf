@@ -12,7 +12,7 @@ locals {
   # Reported to Buildkite as the buildkite-gcp-stack agent tag so we can measure
   # stack adoption by version. Bump this to the release tag (with its leading "v")
   # as part of each release.
-  stack_version = "v1.1.0"
+  stack_version = "v1.2.0"
 }
 
 resource "google_compute_instance_template" "buildkite_agent" {
