@@ -122,7 +122,7 @@ variable "on_host_maintenance" {
 variable "image" {
   description = "Source image for boot disk. Use a custom Packer-built image or a public Buildkite image."
   type        = string
-  default     = "buildkite-gcp-stack/buildkite-ci-stack-x86-64-2026-10-15-1053-64-5a47d28"
+  default     = "buildkite-gcp-stack/buildkite-ci-stack-x86-64-2026-10-27-0339-69-e77aafd"
 }
 
 variable "root_disk_size_gb" {
