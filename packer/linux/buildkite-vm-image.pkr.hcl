@@ -142,12 +142,6 @@ build {
     ]
   }
 
-  # Debian system trust must be fixed before any third-party HTTPS downloads.
-  provisioner "shell" {
-    remote_folder = "/var/tmp"
-    script        = "scripts/remediate-trust"
-  }
-
   # Essential utilities & updates
   provisioner "shell" {
     remote_folder = "/var/tmp"

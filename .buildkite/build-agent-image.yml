@@ -33,7 +33,7 @@ definitions:
         - "packer/linux/conf/buildkite-agent/hooks/*"
         - "packer/linux/conf/buildkite-agent/scripts/*"
         - "packer/linux/conf/docker/scripts/*"
-        - "tests/*-test"
+        - "tests/*"
 
 env:
   GCP_PROJECT_ID: "buildkite-gcp-stack"

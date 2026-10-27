@@ -1,9 +1,7 @@
-# Custom Docker image with both Packer and gcloud CLI for building GCP VM images
-# Packer 1.16.2 is built with Go 1.26.10; 1.16.1 used Go 1.26.8.
+# Packer and Google Cloud CLI for building GCP VM images.
 FROM hashicorp/packer:1.16.2
 
-# Upgrade the base bundle as well as installing the CA update tooling. Enforce
-# the patched Alpine CA floor before downloading third-party tools.
+# Update CA certificates before downloading the SDK.
 RUN apk add --no-cache --upgrade \
     'ca-certificates>=20261020-r0' \
     'ca-certificates-bundle>=20261020-r0' \
@@ -14,10 +12,8 @@ RUN apk add --no-cache --upgrade \
     jq \
     && update-ca-certificates
 
-# Versioned downloads must not silently advance when Google publishes a release.
-# SHA-256 values were recorded from Google's HTTPS versioned downloads. They
-# pin these exact bytes; they are not separately signed upstream checksums.
-# The download page's unversioned archives have different hashes.
+# Pin the SDK version and hashes from Google's versioned HTTPS downloads.
+# These are locally recorded hashes, not signed upstream checksums.
 RUN set -eu; \
     case "$(apk --print-arch)" in \
         x86_64) sdk_arch=x86_64; sdk_sha256=d1ae7be7e12c4e7d8286fab4774f5441020aca89dc7793ddacbace8d11d20f06 ;; \
@@ -32,11 +28,10 @@ RUN set -eu; \
     rm /tmp/google-cloud-cli.tar.gz; \
     test "$(cat /usr/local/google-cloud-sdk/VERSION)" = 590.0.1
 
-# The Linux archive ships glibc Python, not the optional musl component. On
-# Alpine the SDK launchers select system Python; leave their selection intact.
+# SDK launchers use system Python on Alpine, not the bundled glibc Python.
 ENV PATH="/usr/local/google-cloud-sdk/bin:${PATH}"
 
-# Verify installations without credentials or cloud operations.
+# Check that each CLI starts without credentials.
 RUN packer version && gcloud version && gsutil version && bq version
 
 WORKDIR /workspace
