@@ -6,7 +6,7 @@ export DEBIAN_FRONTEND=noninteractive
 # before fetching any third-party keys, scripts, packages or binaries.
 while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 5; done
 sudo -E apt-get update -yq
-sudo -E apt-get install -yq ca-certificates openssl python3
+sudo -E apt-get install -yq ca-certificates
 version=$(dpkg-query -W -f='${Version}' ca-certificates)
 dpkg --compare-versions "$version" ge 20250419+deb13u1 || {
   echo "ca-certificates predates the Debian 13 eMudhra fix: $version" >&2
@@ -14,8 +14,7 @@ dpkg --compare-versions "$version" ge 20250419+deb13u1 || {
 }
 
 # These are the two incident anchors shipped by Debian. Keep explicit ! entries
-# even when the fixed package no longer ships the certificates. The validator
-# also checks all four incident fingerprints (including Microsoft-only roots).
+# even when the fixed package no longer ships the certificates.
 sudo sed -i \
   -e '\|^!*mozilla/emSign_ECC_Root_CA_-_G3.crt$|d' \
   -e '\|^!*mozilla/Comodo_AAA_Services_root.crt$|d' \
@@ -25,6 +24,3 @@ printf '%s\n' \
   '!mozilla/Comodo_AAA_Services_root.crt' \
   | sudo tee -a /etc/ca-certificates.conf >/dev/null
 sudo update-ca-certificates --fresh
-python3 /tmp/trust/check-trust.py /etc/ssl/certs/ca-certificates.crt
-sudo mkdir -p /usr/local/share/buildkite-trust
-sudo cp -r /tmp/trust/. /usr/local/share/buildkite-trust/

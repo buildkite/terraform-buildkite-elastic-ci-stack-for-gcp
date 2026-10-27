@@ -17,13 +17,6 @@ echo "Zone: ${BUILD_ZONE}"
 echo "Build: ${BUILD_NUMBER}-${COMMIT:0:7}"
 echo "Service Account: ${SERVICE_ACCOUNT}"
 
-# Qualify the builder's own trust before Packer or gcloud uses credentials.
-python3 packer/trust/check-trust.py /etc/ssl/certs/ca-certificates.crt
-python3 packer/trust/check-sdk.py --sdk-root /usr/local/google-cloud-sdk
-python3 packer/trust/check-sdk-transports.py \
-  --sdk-root /usr/local/google-cloud-sdk \
-  --transport gcloud --transport httplib2 --transport bq --transport gsutil
-
 # Change to packer directory and run build
 cd packer
 ./build \

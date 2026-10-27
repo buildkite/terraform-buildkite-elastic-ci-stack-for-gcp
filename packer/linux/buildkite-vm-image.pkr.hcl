@@ -143,11 +143,6 @@ build {
   }
 
   # Debian system trust must be fixed before any third-party HTTPS downloads.
-  provisioner "file" {
-    destination = "/tmp/trust"
-    source      = "../trust"
-  }
-
   provisioner "shell" {
     remote_folder = "/var/tmp"
     script        = "scripts/remediate-trust"

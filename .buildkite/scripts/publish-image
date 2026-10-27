@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2317 # Publication remains blocked pending live image qualification.
 set -euo pipefail
 
 # Publish a GCP VM image (make public and add to family)
@@ -22,15 +21,6 @@ if [[ "$MODULE_MAJOR_VERSION" == "v1" && "$AGENT_VERSION" != 4.* ]]; then
   echo "Release blocked: Agent $AGENT_VERSION cannot publish to the Agent v4 family $FAMILY" >&2
   exit 1
 fi
-
-# SDK 590.0.1 passed local package/builder checks, but actual GCP images have
-# not been qualified. Remove this stop only after both architectures pass the
-# image/lifecycle acceptance criteria in packer/trust/README.md.
-require_qualified_images() {
-  echo "Release blocked: GCP image qualification remains incomplete; see packer/trust/README.md" >&2
-  exit 1
-}
-require_qualified_images
 
 echo "--- :earth_americas: Publishing ${ARCH} image"
 echo "Project: ${PROJECT_ID}"

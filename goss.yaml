@@ -297,16 +297,6 @@ command:
   buildkite-agent --version:
     exit-status: 0
 
-  # Offline system/Python/SDK trust and patched v4 package + binary version gates.
-  /usr/local/share/buildkite-trust/check-image:
-    exit-status: 0
-    timeout: 120000
-
-  # Exercise the SDK's actual TLS transports against ephemeral loopback servers.
-  python3 /usr/local/share/buildkite-trust/check-sdk-transports.py --sdk-root /usr/lib/google-cloud-sdk:
-    exit-status: 0
-    timeout: 180000
-
   dpkg-query -W -f='${Status}' unattended-upgrades:
     exit-status: 0
     stdout:

@@ -9,7 +9,6 @@ RUN apk add --no-cache --upgrade \
     'ca-certificates-bundle>=20261020-r0' \
     python3 \
     py3-pip \
-    openssl \
     bash \
     curl \
     jq \
