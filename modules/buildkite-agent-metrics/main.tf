@@ -18,7 +18,7 @@ locals {
 
 # Validate that exactly one token method is configured
 resource "null_resource" "token_validation" {
-  count = (local.use_secret_manager && local.use_env_token) || (!local.use_secret_manager && !local.use_env_token) ? 1 : 0
+  count = local.use_secret_manager == local.use_env_token ? 1 : 0
 
   provisioner "local-exec" {
     command = "echo 'ERROR: Exactly one of buildkite_agent_token or buildkite_agent_token_secret must be provided' && exit 1"
@@ -86,23 +86,15 @@ resource "google_cloudfunctions2_function" "metrics_function" {
     timeout_seconds       = 15
     service_account_email = local.service_account_email
 
-    environment_variables = merge(
-      {
-        GCP_PROJECT_ID = var.project_id
-      },
-      local.use_env_token ? {
-        BUILDKITE_AGENT_TOKENS = var.buildkite_agent_token
-      } : {},
-      local.use_secret_manager ? {
+    environment_variables = {
+      for key, value in {
+        GCP_PROJECT_ID                     = var.project_id
+        BUILDKITE_AGENT_TOKENS             = var.buildkite_agent_token
         BUILDKITE_AGENT_TOKEN_SECRET_NAMES = var.buildkite_agent_token_secret
-      } : {},
-      var.buildkite_queue != "" ? {
-        BUILDKITE_QUEUE = var.buildkite_queue
-      } : {},
-      var.enable_debug ? {
-        BUILDKITE_DEBUG = "true"
-      } : {}
-    )
+        BUILDKITE_QUEUE                    = var.buildkite_queue
+        BUILDKITE_DEBUG                    = var.enable_debug ? "true" : ""
+      } : key => value if value != ""
+    }
 
     ingress_settings               = "ALLOW_ALL"
     all_traffic_on_latest_revision = true
