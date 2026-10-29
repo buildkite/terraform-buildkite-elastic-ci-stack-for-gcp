@@ -11,6 +11,12 @@ locals {
   agent_custom_role_id       = var.agent_custom_role_id != null ? var.agent_custom_role_id : "${replace(var.stack_name, "/[^a-zA-Z0-9_.]/", "")}AgentInstanceMgmt"
   metrics_custom_role_id     = var.metrics_custom_role_id != null ? var.metrics_custom_role_id : "${replace(var.stack_name, "/[^a-zA-Z0-9_.]/", "")}MetricsAutoscaler"
   metrics_function_name      = "${var.stack_name}-metrics-function"
+
+  metrics_function_source = coalesce(var.function_source, {
+    bucket     = "buildkite-cloud-functions"
+    object     = "buildkite-agent-metrics/v5.13.0/buildkite-agent-metrics.zip"
+    generation = 1792708407131285
+  })
 }
 
 module "networking" {
@@ -117,6 +123,10 @@ module "buildkite_metrics" {
   buildkite_queue              = var.buildkite_queue
   buildkite_organization_slug  = var.buildkite_organization_slug
   service_account_email        = module.iam.metrics_service_account_email
+
+  function_source_bucket     = local.metrics_function_source.bucket
+  function_source_object     = local.metrics_function_source.object
+  function_source_generation = local.metrics_function_source.generation
 
   labels = var.labels
 
