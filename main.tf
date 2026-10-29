@@ -100,7 +100,7 @@ module "compute" {
 
   # Ensure the autoscaler waits for the metrics function to be invoked
   # so the custom metric exists before the autoscaler is created
-  autoscaler_depends_on = var.enable_autoscaling ? module.buildkite_metrics : []
+  autoscaler_depends_on = module.buildkite_metrics[*].metrics_initialized
 }
 
 module "buildkite_metrics" {
