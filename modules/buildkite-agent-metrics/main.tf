@@ -73,8 +73,9 @@ resource "google_cloudfunctions2_function" "metrics_function" {
 
     source {
       storage_source {
-        bucket = var.function_source_bucket
-        object = var.function_source_object
+        bucket     = var.function_source_bucket
+        object     = var.function_source_object
+        generation = var.function_source_generation
       }
     }
   }
