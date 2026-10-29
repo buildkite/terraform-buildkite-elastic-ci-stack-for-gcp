@@ -29,13 +29,14 @@ module "networking" {
 module "iam" {
   source = "./modules/iam"
 
-  project_id                 = var.project_id
-  agent_service_account_id   = local.agent_service_account_id
-  metrics_service_account_id = local.metrics_service_account_id
-  agent_custom_role_id       = local.agent_custom_role_id
-  metrics_custom_role_id     = local.metrics_custom_role_id
-  enable_secret_access       = var.enable_secret_access
-  enable_storage_access      = var.enable_storage_access
+  project_id                   = var.project_id
+  agent_service_account_id     = local.agent_service_account_id
+  metrics_service_account_id   = local.metrics_service_account_id
+  agent_custom_role_id         = local.agent_custom_role_id
+  metrics_custom_role_id       = local.metrics_custom_role_id
+  enable_secret_access         = var.enable_secret_access
+  enable_storage_access        = var.enable_storage_access
+  buildkite_agent_token_secret = var.enable_autoscaling ? var.buildkite_agent_token_secret : ""
 }
 
 module "compute" {
