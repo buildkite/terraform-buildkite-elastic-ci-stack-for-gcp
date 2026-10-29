@@ -36,6 +36,17 @@
       "extractVersionTemplate": "^v(?<version>.*)$"
     },
     {
+      "description": "Update the metrics function release and GCS generation together",
+      "customType": "regex",
+      "managerFilePatterns": ["/^main\\.tf$/"],
+      "matchStrings": [
+        "object\\s*=\\s*\"buildkite-agent-metrics/(?<currentValue>v[^/]+)/buildkite-agent-metrics\\.zip\"\\s+generation\\s*=\\s*(?<currentDigest>\\d+)"
+      ],
+      "datasourceTemplate": "custom.buildkite-agent-metrics",
+      "depNameTemplate": "buildkite/buildkite-agent-metrics",
+      "versioningTemplate": "semver"
+    },
+    {
       "description": "Update GCP Buildkite image references in Terraform variables",
       "customType": "regex",
       "fileMatch": ["^modules/compute/variables\\.tf$"],
@@ -46,5 +57,13 @@
       "depNameTemplate": "buildkite-ci-stack-x86-64",
       "versioningTemplate": "loose"
     }
-  ]
+  ],
+  "customDatasources": {
+    "buildkite-agent-metrics": {
+      "defaultRegistryUrlTemplate": "https://storage.googleapis.com/storage/v1/b/buildkite-cloud-functions/o?prefix=buildkite-agent-metrics/v&fields=items(name,generation,timeCreated)",
+      "transformTemplates": [
+        "{\"releases\": [items[$match(name, /^buildkite-agent-metrics\\/v\\d+\\.\\d+\\.\\d+\\/buildkite-agent-metrics\\.zip$/)].{\"version\": $split(name, \"/\")[1], \"digest\": generation, \"releaseTimestamp\": timeCreated}], \"sourceUrl\": \"https://github.com/buildkite/buildkite-agent-metrics\"}"
+      ]
+    }
+  }
 }
