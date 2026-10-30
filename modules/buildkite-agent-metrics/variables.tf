@@ -99,3 +99,14 @@ variable "function_source_object" {
   type        = string
   default     = "buildkite-agent-metrics/cloud-function-latest.zip"
 }
+
+variable "function_source_generation" {
+  description = "GCS generation of the function ZIP. Null uses the latest generation."
+  type        = number
+  default     = null
+
+  validation {
+    condition     = var.function_source_generation == null ? true : var.function_source_generation > 0 && floor(var.function_source_generation) == var.function_source_generation
+    error_message = "Function source generation must be a positive integer or null."
+  }
+}

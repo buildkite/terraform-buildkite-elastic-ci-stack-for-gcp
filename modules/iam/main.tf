@@ -107,9 +107,32 @@ resource "google_project_iam_member" "metrics_logging_writer" {
 
 # read Buildkite API token from Secret Manager
 resource "google_project_iam_member" "metrics_secret_accessor" {
+  count   = var.buildkite_agent_token_secret == "" ? 0 : 1
   project = var.project_id
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.metrics.email}"
+
+  dynamic "condition" {
+    for_each = var.buildkite_agent_token_secret == null ? [] : [regex(
+      "^projects/(?P<project>[^/]+)/secrets/(?P<name>[^/]+)/versions/[^/]+$",
+      var.buildkite_agent_token_secret
+    )]
+    content {
+      title       = "buildkite_metrics_token"
+      description = "Read the Buildkite agent token secret"
+      # The project policy supplies the boundary. Extract its canonical project
+      # number from the resource name without requiring a project metadata read.
+      expression = condition.value.project != var.project_id ? "false" : <<-EOT
+        resource.type == "secretmanager.googleapis.com/SecretVersion" &&
+        resource.name.extract("projects/{project}/secrets/${condition.value.name}/versions/") ==
+          resource.name.extract("projects/{project}/")
+      EOT
+    }
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # access Cloud Storage for Cloud Function builds
