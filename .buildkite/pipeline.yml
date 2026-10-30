@@ -114,6 +114,23 @@ steps:
 
   - group: "📖 Docs and Examples"
     steps:
+      - label: ":page_facing_up: Documentation Check"
+        key: docs-check
+        if_changed:
+          - "*.tf"
+          - "README.md"
+          - ".terraform-docs.yml"
+          - ".terraform.lock.hcl"
+          - ".buildkite/scripts/docs-check.sh"
+          - ".buildkite/pipeline.yml"
+        command: .buildkite/scripts/docs-check.sh
+        plugins:
+          - docker#v5.14.0:
+              image: "quay.io/terraform-docs/terraform-docs:0.24.0-amd64"
+              workdir: "/workdir"
+              entrypoint: "/bin/sh"
+              chown: true
+
       - label: ":terraform: Validate Examples"
         key: terraform-validate-examples
         if_changed: "examples/*"
