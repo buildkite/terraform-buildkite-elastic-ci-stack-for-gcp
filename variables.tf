@@ -51,7 +51,7 @@ variable "zones" {
 # Buildkite Configuration
 
 variable "buildkite_organization_slug" {
-  description = "Buildkite organization slug (from your Buildkite URL: https://buildkite.com/<org-slug>). Used for metrics namespacing."
+  description = "Buildkite organization slug (from your Buildkite URL: `https://buildkite.com/<org-slug>`). Used for metrics namespacing."
   type        = string
 
   validation {
@@ -110,7 +110,7 @@ variable "function_source" {
 # Instance Configuration
 
 variable "machine_type" {
-  description = "GCP machine type for agent instances (e.g., 'e2-standard-4', 'n1-standard-2', 'c2-standard-4'). See: https://cloud.google.com/compute/docs/machine-types"
+  description = "GCP machine type for agent instances (e.g., 'e2-standard-4', 'n1-standard-2', 'c2-standard-4'). See: <https://cloud.google.com/compute/docs/machine-types>"
   type        = string
   default     = "e2-standard-4"
 
