@@ -57,7 +57,7 @@ When you open the PR, explain what changed and why. Link any related issues and 
 - [gcloud CLI](https://cloud.google.com/sdk/docs/install) configured with credentials
 - [Packer](https://www.packer.io/downloads) >= 1.8 (optional, for custom images)
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) for CI testing
-- [terraform-docs](https://terraform-docs.io/) for documentation
+- [terraform-docs](https://terraform-docs.io/) 0.24.0 for documentation (matching CI)
 
 ### Local Testing
 
@@ -120,6 +120,14 @@ terraform-docs markdown table . --output-file README.md
 # For sub-modules
 cd modules/networking
 terraform-docs markdown table . --output-file README.md
+```
+
+CI checks that the root README's generated Terraform reference is up to date without modifying it. After changing root module inputs, outputs, or requirements, regenerate the reference and commit the README with your changes.
+
+To run the same check locally from the repository root:
+
+```bash
+.buildkite/scripts/docs-check.sh
 ```
 
 ## Project Structure
@@ -274,6 +282,7 @@ This project uses Buildkite for CI/CD. The pipeline runs:
 - Packer validation
 - ShellCheck for bash scripts
 - Markdown linting
+- Generated Terraform documentation freshness
 
 See [`.buildkite/pipeline.yml`](.buildkite/pipeline.yml) for the full pipeline definition.
 
