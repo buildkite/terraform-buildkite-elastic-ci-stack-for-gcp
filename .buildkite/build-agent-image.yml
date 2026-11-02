@@ -33,7 +33,7 @@ definitions:
         - "packer/linux/conf/buildkite-agent/hooks/*"
         - "packer/linux/conf/buildkite-agent/scripts/*"
         - "packer/linux/conf/docker/scripts/*"
-        - "tests/*"
+        - "tests/*-test"
 
 env:
   GCP_PROJECT_ID: "buildkite-gcp-stack"
@@ -101,8 +101,11 @@ steps:
           - "**/*.tf"
           - "**/*.tfvars"
           - "**/*.tftest.hcl"
+          - "tests/*.jq"
           - ".buildkite/scripts/test_terraform"
-        command: .buildkite/scripts/test_terraform
+        command:
+          - apk add --no-cache jq
+          - .buildkite/scripts/test_terraform
         plugins:
           - *terraform_docker
         agents:
