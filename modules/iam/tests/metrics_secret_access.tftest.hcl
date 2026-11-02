@@ -21,8 +21,13 @@ run "restricts_metrics_to_the_token_secret" {
   }
 
   assert {
-    condition     = length(google_project_iam_member.metrics_secret_accessor[0].condition) == 1 && strcontains(google_project_iam_member.metrics_secret_accessor[0].condition[0].expression, "/secrets/buildkite-token/versions/")
-    error_message = "Metrics access must require the exact secret path and version boundary, not a secret-name prefix."
+    condition = trimspace(google_project_iam_member.metrics_secret_accessor[0].condition[0].expression) == trimspace(<<-EOT
+      resource.type == "secretmanager.googleapis.com/SecretVersion" &&
+      resource.name.extract("projects/{project}/secrets/buildkite-token/versions/") ==
+        resource.name.extract("projects/{project}/")
+    EOT
+    )
+    error_message = "Metrics access must require the SecretVersion resource type and compare the complete secret path against the resource's project."
   }
 
   assert {

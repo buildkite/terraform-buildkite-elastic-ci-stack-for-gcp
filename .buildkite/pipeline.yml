@@ -68,8 +68,11 @@ steps:
           - "**/*.tf"
           - "**/*.tfvars"
           - "**/*.tftest.hcl"
+          - "tests/*.jq"
           - ".buildkite/scripts/test_terraform"
-        command: .buildkite/scripts/test_terraform
+        command:
+          - apk add --no-cache jq
+          - .buildkite/scripts/test_terraform
         plugins:
           - *terraform_docker
 
