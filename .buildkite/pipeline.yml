@@ -1,6 +1,6 @@
 definitions:
   terraform_docker: &terraform_docker
-    docker#v5.14.0:
+    docker#v5.14.0: &terraform_docker_config
       image: "hashicorp/terraform:1.13"
       workdir: "/workdir"
       entrypoint: "/bin/sh"
@@ -70,11 +70,11 @@ steps:
           - "**/*.tftest.hcl"
           - "tests/*.jq"
           - ".buildkite/scripts/test_terraform"
-        command:
-          - apk add --no-cache jq
-          - .buildkite/scripts/test_terraform
+        command: apk add --no-cache jq && .buildkite/scripts/test_terraform
         plugins:
-          - *terraform_docker
+          - docker#v5.14.0:
+              <<: *terraform_docker_config
+              shell: ["-ec"]
 
       - label: ":lint-roller: TFLint"
         key: tflint
