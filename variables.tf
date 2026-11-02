@@ -95,6 +95,18 @@ variable "buildkite_api_endpoint" {
   default     = "https://agent.buildkite.com/v3"
 }
 
+# Metrics Function Source
+
+variable "function_source" {
+  description = "Metrics function source. Null uses the module's pinned release. Set generation to null to use the latest generation of a custom object."
+  type = object({
+    bucket     = string
+    object     = string
+    generation = number
+  })
+  default = null
+}
+
 # Instance Configuration
 
 variable "machine_type" {

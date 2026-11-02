@@ -56,6 +56,21 @@ variable "metrics_custom_role_id" {
   }
 }
 
+variable "buildkite_agent_token_secret" {
+  description = "Token secret version the metrics function can read. Use an empty string for no secret access, or null for project-wide access. Grant cross-project access separately."
+  type        = string
+  default     = null
+
+  validation {
+    condition = (
+      var.buildkite_agent_token_secret == null ||
+      var.buildkite_agent_token_secret == "" ||
+      can(regex("^projects/[a-z][a-z0-9-]{4,28}[a-z0-9]/secrets/[a-zA-Z0-9_-]+/versions/[^/]+$", var.buildkite_agent_token_secret))
+    )
+    error_message = "Token secret must be null, empty, or a full projects/PROJECT_ID/secrets/SECRET_NAME/versions/VERSION reference."
+  }
+}
+
 variable "enable_secret_access" {
   description = "Grant agent service account access to Secret Manager secrets"
   type        = bool

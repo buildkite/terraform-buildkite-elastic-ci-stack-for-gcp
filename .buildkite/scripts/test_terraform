@@ -18,7 +18,11 @@ module_dirs=$(printf '%s\n' "${mapped_dirs}" | sort -u)
 while IFS= read -r module_dir; do
   echo "Testing ${module_dir}..."
   terraform -chdir="${module_dir}" init -backend=false -input=false </dev/null
-  terraform -chdir="${module_dir}" test </dev/null
+  if [ "${module_dir}" = "." ]; then
+    terraform test -json -verbose </dev/null | jq -e -s -f tests/metrics_plan.jq
+  else
+    terraform -chdir="${module_dir}" test </dev/null
+  fi
 done <<EOF
 ${module_dirs}
 EOF

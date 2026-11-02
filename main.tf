@@ -11,6 +11,12 @@ locals {
   agent_custom_role_id       = var.agent_custom_role_id != null ? var.agent_custom_role_id : "${replace(var.stack_name, "/[^a-zA-Z0-9_.]/", "")}AgentInstanceMgmt"
   metrics_custom_role_id     = var.metrics_custom_role_id != null ? var.metrics_custom_role_id : "${replace(var.stack_name, "/[^a-zA-Z0-9_.]/", "")}MetricsAutoscaler"
   metrics_function_name      = "${var.stack_name}-metrics-function"
+
+  metrics_function_source = coalesce(var.function_source, {
+    bucket     = "buildkite-cloud-functions"
+    object     = "buildkite-agent-metrics/v5.13.0/buildkite-agent-metrics.zip"
+    generation = 1792708407131285
+  })
 }
 
 module "networking" {
@@ -29,13 +35,14 @@ module "networking" {
 module "iam" {
   source = "./modules/iam"
 
-  project_id                 = var.project_id
-  agent_service_account_id   = local.agent_service_account_id
-  metrics_service_account_id = local.metrics_service_account_id
-  agent_custom_role_id       = local.agent_custom_role_id
-  metrics_custom_role_id     = local.metrics_custom_role_id
-  enable_secret_access       = var.enable_secret_access
-  enable_storage_access      = var.enable_storage_access
+  project_id                   = var.project_id
+  agent_service_account_id     = local.agent_service_account_id
+  metrics_service_account_id   = local.metrics_service_account_id
+  agent_custom_role_id         = local.agent_custom_role_id
+  metrics_custom_role_id       = local.metrics_custom_role_id
+  enable_secret_access         = var.enable_secret_access
+  enable_storage_access        = var.enable_storage_access
+  buildkite_agent_token_secret = var.enable_autoscaling ? var.buildkite_agent_token_secret : ""
 }
 
 module "compute" {
@@ -100,7 +107,7 @@ module "compute" {
 
   # Ensure the autoscaler waits for the metrics function to be invoked
   # so the custom metric exists before the autoscaler is created
-  autoscaler_depends_on = var.enable_autoscaling ? module.buildkite_metrics : []
+  autoscaler_depends_on = module.buildkite_metrics[*].metrics_initialized
 }
 
 module "buildkite_metrics" {
@@ -116,6 +123,10 @@ module "buildkite_metrics" {
   buildkite_queue              = var.buildkite_queue
   buildkite_organization_slug  = var.buildkite_organization_slug
   service_account_email        = module.iam.metrics_service_account_email
+
+  function_source_bucket     = local.metrics_function_source.bucket
+  function_source_object     = local.metrics_function_source.object
+  function_source_generation = local.metrics_function_source.generation
 
   labels = var.labels
 
