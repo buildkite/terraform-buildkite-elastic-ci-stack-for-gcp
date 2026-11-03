@@ -12,6 +12,15 @@
       "allowedVersions": ">=4.7.0 <5"
     },
     {
+      "description": "Keep Google Cloud CLI updates above the eMudhra remediation release",
+      "matchDepNames": [
+        "google-cloud-cli",
+        "gcr.io/google.com/cloudsdktool/google-cloud-cli"
+      ],
+      "allowedVersions": ">=590.0.1",
+      "groupName": "Google Cloud CLI"
+    },
+    {
       "description": "Group all Terraform provider updates together",
       "matchManagers": ["terraform"],
       "matchPackagePatterns": ["*"],
@@ -34,6 +43,27 @@
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "buildkite/agent",
       "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "description": "Update pinned image utilities in the shared versions file",
+      "customType": "regex",
+      "managerFilePatterns": ["/^packer/linux/scripts/versions\\.sh$/"],
+      "matchStrings": [
+        "# renovate: depName=(?<depName>[^\\s]+)\\s+export [A-Z0-9_]+=\"v?(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "description": "Update the shared guest Google Cloud CLI and auth plugin pin",
+      "customType": "regex",
+      "managerFilePatterns": ["/^packer/linux/scripts/versions\\.sh$/"],
+      "matchStrings": [
+        "GOOGLE_CLOUD_CLI_VERSION=\"(?<currentValue>\\d+\\.\\d+\\.\\d+)-0\""
+      ],
+      "datasourceTemplate": "custom.google-cloud-cli",
+      "depNameTemplate": "google-cloud-cli",
+      "versioningTemplate": "semver"
     },
     {
       "description": "Update the metrics function release and GCS generation together",
@@ -59,6 +89,12 @@
     }
   ],
   "customDatasources": {
+    "google-cloud-cli": {
+      "defaultRegistryUrlTemplate": "https://dl.google.com/dl/cloudsdk/channels/rapid/components-2.json",
+      "transformTemplates": [
+        "{\"releases\": [{\"version\": version}]}"
+      ]
+    },
     "buildkite-agent-metrics": {
       "defaultRegistryUrlTemplate": "https://storage.googleapis.com/storage/v1/b/buildkite-cloud-functions/o?prefix=buildkite-agent-metrics/v&fields=items(name,generation,timeCreated)",
       "transformTemplates": [

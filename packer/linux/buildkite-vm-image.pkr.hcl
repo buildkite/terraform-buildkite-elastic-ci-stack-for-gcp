@@ -133,6 +133,11 @@ build {
     source      = "../../templates"
   }
 
+  provisioner "file" {
+    destination = "/tmp/versions.sh"
+    source      = "scripts/versions.sh"
+  }
+
   # Create empty directories for plugins and build
   provisioner "shell" {
     remote_folder = "/var/tmp"

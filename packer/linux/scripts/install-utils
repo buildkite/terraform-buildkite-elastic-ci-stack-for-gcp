@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# shellcheck disable=SC1091
+source /tmp/versions.sh
+
 # Set non-interactive mode for apt to prevent dialog prompts
 export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
@@ -51,15 +54,13 @@ sudo -E apt-get install -yq \
 echo "Enabling rsyslog service..."
 sudo systemctl enable --now rsyslog
 
-GIT_LFS_VERSION=3.4.0
 echo "Installing git lfs ${GIT_LFS_VERSION}..."
 pushd "$(mktemp -d -p /var/tmp)"
-curl -sSL https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/git-lfs-linux-${ARCH}-v${GIT_LFS_VERSION}.tar.gz | tar xz
-sudo git-lfs-${GIT_LFS_VERSION}/install.sh
+curl -sSL "https://github.com/git-lfs/git-lfs/releases/download/v${GIT_LFS_VERSION}/git-lfs-linux-${ARCH}-v${GIT_LFS_VERSION}.tar.gz" | tar xz
+sudo "git-lfs-${GIT_LFS_VERSION}/install.sh"
 popd
 
 # See https://github.com/goss-org/goss/releases for release versions
-GOSS_VERSION=v0.3.23
 echo "Installing goss $GOSS_VERSION for system validation..."
 sudo curl -L "https://github.com/goss-org/goss/releases/download/${GOSS_VERSION}/goss-linux-${ARCH}" -o /usr/local/bin/goss
 sudo chmod 755 /usr/local/bin/goss

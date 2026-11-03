@@ -5,7 +5,7 @@
 # This test suite validates that a Packer-built GCP VM image has all required
 # software, services, users, and configuration for running Buildkite agents.
 #
-# Run with: sudo goss validate --format documentation
+# Run with: sudo bash -ec 'source packer/linux/scripts/versions.sh; goss validate --format documentation'
 #
 # The test instance is a freshly launched VM where the bootstrap script has
 # already run, so buildkite-agent should be active by the time goss executes.
@@ -264,7 +264,7 @@ command:
   git-lfs --version:
     exit-status: 0
     stdout:
-      - /3\.4\.0/
+      - "git-lfs/{{ .Env.GIT_LFS_VERSION }}"
 
   make --version:
     exit-status: 0
@@ -321,13 +321,13 @@ command:
     exit-status: 0
     timeout: 30000
     stdout:
-      - /2\.38\.2/
+      - "Docker Compose version v{{ .Env.DOCKER_COMPOSE_V2_VERSION }}"
 
   docker buildx version:
     exit-status: 0
     timeout: 30000
     stdout:
-      - /0\.26\.1/
+      - "github.com/docker/buildx v{{ .Env.DOCKER_BUILDX_VERSION }}"
 
   # ---------------------------------------------------------------------------
   # Docker functional tests

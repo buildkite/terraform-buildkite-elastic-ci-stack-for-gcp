@@ -176,6 +176,12 @@ terraform validate
 
 ### Packer Image Testing
 
+Utility versions live in `packer/linux/scripts/versions.sh`, which Packer uploads
+before running the installation scripts. Renovate updates these pins, and Goss
+reads the same values when validating an image. The agent pin stays in
+`install-buildkite-agent`; the builder's Cloud CLI image is pinned by version and
+digest in `.buildkite/Dockerfile`.
+
 When making changes to Packer images:
 
 ```bash
