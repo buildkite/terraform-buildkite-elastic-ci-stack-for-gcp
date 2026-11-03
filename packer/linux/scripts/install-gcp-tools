@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck disable=SC1091
+source /tmp/versions.sh
+
 # Set non-interactive mode for apt operations
 export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
 
 echo "Installing GCP-specific tools and utilities..."
 
-# Keep the guest SDK and auth plugin on the same patched upstream release.
-readonly GOOGLE_CLOUD_CLI_VERSION="590.0.1-0"
-
 sudo -E apt-get update -y
-sudo -E apt-get install -yq \
+# The base image or an earlier apt upgrade can already have a newer CLI.
+sudo -E apt-get install -yq --allow-downgrades \
   "google-cloud-cli=${GOOGLE_CLOUD_CLI_VERSION}" \
   "google-cloud-cli-gke-gcloud-auth-plugin=${GOOGLE_CLOUD_CLI_VERSION}"
 

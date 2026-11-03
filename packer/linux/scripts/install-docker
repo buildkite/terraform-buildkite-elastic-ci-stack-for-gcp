@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euxo pipefail
 
+# shellcheck disable=SC1091
+source /tmp/versions.sh
+
 echo "Installing Docker..."
 
 # Install Docker from official Docker repository for Debian
@@ -50,10 +53,6 @@ case "$ARCH" in
     exit 1
     ;;
 esac
-
-# Plugin versions
-DOCKER_COMPOSE_V2_VERSION="2.38.2"
-DOCKER_BUILDX_VERSION="0.26.1"
 
 # Create plugin directory
 sudo mkdir -p /usr/libexec/docker/cli-plugins

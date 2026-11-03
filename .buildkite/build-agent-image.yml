@@ -307,7 +307,7 @@ steps:
     if_changed: *if_changed_image
     depends_on: launch-x86-64
     command:
-      - sudo goss validate --format documentation
+      - sudo bash -ec 'source packer/linux/scripts/versions.sh; goss validate --format documentation'
     concurrency_group: gcp-image-test
     concurrency: 1
     timeout_in_minutes: 10
@@ -321,7 +321,7 @@ steps:
     if_changed: *if_changed_image
     depends_on: launch-arm64
     command:
-      - sudo goss validate --format documentation
+      - sudo bash -ec 'source packer/linux/scripts/versions.sh; goss validate --format documentation'
     concurrency_group: gcp-image-test
     concurrency: 1
     timeout_in_minutes: 10
