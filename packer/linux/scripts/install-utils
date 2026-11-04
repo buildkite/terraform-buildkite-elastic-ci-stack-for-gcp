@@ -10,9 +10,18 @@ export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
 
 case $(uname -m) in
-x86_64) ARCH=amd64 ;;
-aarch64) ARCH=arm64 ;;
-*) ARCH=unknown ;;
+x86_64)
+  ARCH=amd64
+  GOSS_ARCH=x86_64
+  ;;
+aarch64)
+  ARCH=arm64
+  GOSS_ARCH=arm64
+  ;;
+*)
+  ARCH=unknown
+  GOSS_ARCH=unknown
+  ;;
 esac
 
 echo "Waiting for any background apt processes to finish..."
@@ -62,10 +71,11 @@ popd
 
 # See https://github.com/goss-org/goss/releases for release versions
 echo "Installing goss $GOSS_VERSION for system validation..."
-sudo curl -L "https://github.com/goss-org/goss/releases/download/${GOSS_VERSION}/goss-linux-${ARCH}" -o /usr/local/bin/goss
+curl -fsSL "https://github.com/goss-org/goss/releases/download/${GOSS_VERSION}/goss_${GOSS_VERSION#v}_linux_${GOSS_ARCH}.tar.gz" | sudo tar xz -C /usr/local/bin goss
 sudo chmod 755 /usr/local/bin/goss
-sudo curl -L "https://github.com/goss-org/goss/releases/download/${GOSS_VERSION}/dgoss" -o /usr/local/bin/dgoss
+sudo curl -fsSL "https://github.com/goss-org/goss/releases/download/${GOSS_VERSION}/dgoss" -o /usr/local/bin/dgoss
 sudo chmod 755 /usr/local/bin/dgoss
+goss --version
 
 echo "Setting up locale..."
 # Generate the locale
