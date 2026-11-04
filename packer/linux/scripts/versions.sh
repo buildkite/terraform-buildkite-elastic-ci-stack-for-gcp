@@ -5,7 +5,7 @@
 export GOOGLE_CLOUD_CLI_VERSION="592.0.0-0"
 
 # renovate: depName=git-lfs/git-lfs
-export GIT_LFS_VERSION="3.4.0"
+export GIT_LFS_VERSION="3.8.1"
 # renovate: depName=goss-org/goss
 export GOSS_VERSION="v0.3.23"
 
