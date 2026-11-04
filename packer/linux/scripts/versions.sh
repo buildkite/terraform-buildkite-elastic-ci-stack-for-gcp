@@ -7,7 +7,7 @@ export GOOGLE_CLOUD_CLI_VERSION="592.0.0-0"
 # renovate: depName=git-lfs/git-lfs
 export GIT_LFS_VERSION="3.4.0"
 # renovate: depName=goss-org/goss
-export GOSS_VERSION="v0.3.23"
+export GOSS_VERSION="v0.4.10"
 
 # renovate: depName=docker/compose
 export DOCKER_COMPOSE_V2_VERSION="2.40.3"
