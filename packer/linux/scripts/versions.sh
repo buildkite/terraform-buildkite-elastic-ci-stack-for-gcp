@@ -10,6 +10,6 @@ export GIT_LFS_VERSION="3.4.0"
 export GOSS_VERSION="v0.3.23"
 
 # renovate: depName=docker/compose
-export DOCKER_COMPOSE_V2_VERSION="2.40.3"
+export DOCKER_COMPOSE_V2_VERSION="5.7.0"
 # renovate: depName=docker/buildx
 export DOCKER_BUILDX_VERSION="0.38.1"
