@@ -27,6 +27,13 @@
       "groupName": "terraform providers"
     },
     {
+      "description": "Preserve Google provider constraints until a release falls outside the supported range",
+      "matchManagers": ["terraform"],
+      "matchDepTypes": ["required_provider"],
+      "matchDepNames": ["google"],
+      "rangeStrategy": "replace"
+    },
+    {
       "description": "Group all Buildkite pipeline updates together",
       "matchManagers": ["buildkite"],
       "groupName": "buildkite pipeline"
