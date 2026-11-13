@@ -60,7 +60,7 @@ variable "on_host_maintenance" {
 variable "image" {
   description = "Source image for boot disk"
   type        = string
-  default     = "buildkite-gcp-stack/buildkite-ci-stack-x86-64-2026-11-03-1012-73-8783d51"
+  default     = "buildkite-gcp-stack/buildkite-ci-stack-x86-64-2026-11-13-1343-77-415127e"
 }
 
 variable "root_disk_size_gb" {
