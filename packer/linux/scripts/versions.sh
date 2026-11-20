@@ -12,4 +12,4 @@ export GOSS_VERSION="v0.4.10"
 # renovate: depName=docker/compose
 export DOCKER_COMPOSE_V2_VERSION="5.8.0"
 # renovate: depName=docker/buildx
-export DOCKER_BUILDX_VERSION="0.39.0"
+export DOCKER_BUILDX_VERSION="0.39.1"
