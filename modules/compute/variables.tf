@@ -74,6 +74,28 @@ variable "on_host_maintenance" {
   }
 }
 
+variable "fallback_machine_types" {
+  description = "Machine types to use, in order of preference, when machine_type has no capacity. Requires distribution_policy_target_shape other than EVEN. Use types with the same vCPU count and a boot disk type they all support."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for t in var.fallback_machine_types : can(regex("^[a-z][a-z0-9-]+$", t))])
+    error_message = "Each fallback machine type must be a valid GCP machine type."
+  }
+}
+
+variable "distribution_policy_target_shape" {
+  description = "How the regional managed instance group distributes instances across zones: EVEN, BALANCED, ANY or ANY_SINGLE_ZONE."
+  type        = string
+  default     = "EVEN"
+
+  validation {
+    condition     = contains(["EVEN", "BALANCED", "ANY", "ANY_SINGLE_ZONE"], var.distribution_policy_target_shape)
+    error_message = "Distribution policy target shape must be EVEN, BALANCED, ANY or ANY_SINGLE_ZONE."
+  }
+}
+
 variable "image" {
   description = "Source image for boot disk (Buildkite CI Stack recommended)"
   type        = string

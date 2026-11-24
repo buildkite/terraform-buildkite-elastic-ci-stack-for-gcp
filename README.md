@@ -49,6 +49,26 @@ automatic restart remains enabled. Choose zones that support your GPU and use a
 Buildkite agent image with the required NVIDIA drivers (and NVIDIA Container
 Toolkit for GPU-enabled Docker builds); the default image does not install them.
 
+### Machine type fallbacks
+
+When a machine type runs out of capacity in the region, new agents cannot start
+and jobs wait. `fallback_machine_types` lets the managed instance group use
+other machine types, in order of preference, through
+[instance flexibility](https://cloud.google.com/compute/docs/instance-groups/about-instance-flexibility):
+
+```hcl
+  machine_type                     = "c3d-standard-8"
+  fallback_machine_types           = ["c2d-standard-8", "n2d-standard-8"]
+  distribution_policy_target_shape = "ANY"
+```
+
+The group creates each VM with the first type in the list that has capacity.
+Instance flexibility does not support the `EVEN` target distribution shape, so
+set `distribution_policy_target_shape` to `BALANCED`, `ANY` or
+`ANY_SINGLE_ZONE`. Pick machine types with the same vCPU count, since
+`autoscaling_jobs_per_instance` applies to all of them, and check that each
+supports `root_disk_type`.
+
 ## Contributing
 
 See [Contributing Guidelines](CONTRIBUTING.md).
@@ -97,6 +117,7 @@ No resources.
 | <a name="input_buildkite_organization_slug"></a> [buildkite\_organization\_slug](#input\_buildkite\_organization\_slug) | Buildkite organization slug (from your Buildkite URL: `https://buildkite.com/<org-slug>`). Used for metrics namespacing. | `string` | n/a | yes |
 | <a name="input_buildkite_queue"></a> [buildkite\_queue](#input\_buildkite\_queue) | Buildkite queue name that agents will listen to. Agents in this stack will only pick up jobs targeting this queue. | `string` | `"default"` | no |
 | <a name="input_cooldown_period"></a> [cooldown\_period](#input\_cooldown\_period) | Cooldown period in seconds between autoscaling actions to prevent flapping | `number` | `60` | no |
+| <a name="input_distribution_policy_target_shape"></a> [distribution\_policy\_target\_shape](#input\_distribution\_policy\_target\_shape) | How the regional managed instance group distributes instances across zones: EVEN, BALANCED, ANY or ANY\_SINGLE\_ZONE. | `string` | `"EVEN"` | no |
 | <a name="input_enable_autohealing"></a> [enable\_autohealing](#input\_enable\_autohealing) | Enable automatic replacement of unhealthy instances | `bool` | `true` | no |
 | <a name="input_enable_autoscaling"></a> [enable\_autoscaling](#input\_enable\_autoscaling) | Enable autoscaling based on Buildkite job queue metrics. Requires buildkite-agent-metrics Cloud Function to be deployed. | `bool` | `true` | no |
 | <a name="input_enable_iap_access"></a> [enable\_iap\_access](#input\_enable\_iap\_access) | Enable Identity-Aware Proxy (IAP) for secure SSH without external IPs or VPN | `bool` | `false` | no |
@@ -107,6 +128,7 @@ No resources.
 | <a name="input_enable_ssh_access"></a> [enable\_ssh\_access](#input\_enable\_ssh\_access) | Enable SSH access to instances via firewall rule. Set to false for additional security. | `bool` | `true` | no |
 | <a name="input_enable_storage_access"></a> [enable\_storage\_access](#input\_enable\_storage\_access) | Grant agents access to Cloud Storage. Enable if your builds need to upload/download artifacts. | `bool` | `false` | no |
 | <a name="input_enable_vtpm"></a> [enable\_vtpm](#input\_enable\_vtpm) | Enable virtual Trusted Platform Module for shielded VM instances (recommended) | `bool` | `true` | no |
+| <a name="input_fallback_machine_types"></a> [fallback\_machine\_types](#input\_fallback\_machine\_types) | Machine types to use, in order of preference, when machine\_type has no capacity. Requires distribution\_policy\_target\_shape other than EVEN. Use types with the same vCPU count and a boot disk type they all support. | `list(string)` | `[]` | no |
 | <a name="input_function_source"></a> [function\_source](#input\_function\_source) | Metrics function source. Null uses the module's pinned release. Set generation to null to use the latest generation of a custom object. | <pre>object({<br/>    bucket     = string<br/>    object     = string<br/>    generation = number<br/>  })</pre> | `null` | no |
 | <a name="input_health_check_healthy_threshold"></a> [health\_check\_healthy\_threshold](#input\_health\_check\_healthy\_threshold) | Number of consecutive successful health checks before marking instance healthy | `number` | `2` | no |
 | <a name="input_health_check_initial_delay_sec"></a> [health\_check\_initial\_delay\_sec](#input\_health\_check\_initial\_delay\_sec) | Time (in seconds) to wait after instance start before beginning health checks | `number` | `300` | no |

@@ -31,11 +31,13 @@ module "compute" {
   agent_service_account_email = var.agent_service_account_email
 
   # Instance configuration
-  machine_type        = var.machine_type
-  on_host_maintenance = var.on_host_maintenance
-  image               = var.image
-  root_disk_size_gb   = var.root_disk_size_gb
-  root_disk_type      = var.root_disk_type
+  machine_type                     = var.machine_type
+  fallback_machine_types           = var.fallback_machine_types
+  distribution_policy_target_shape = var.distribution_policy_target_shape
+  on_host_maintenance              = var.on_host_maintenance
+  image                            = var.image
+  root_disk_size_gb                = var.root_disk_size_gb
+  root_disk_type                   = var.root_disk_type
 
   # Buildkite configuration
   buildkite_organization_slug  = var.buildkite_organization_slug
