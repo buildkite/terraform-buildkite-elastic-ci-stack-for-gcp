@@ -57,6 +57,12 @@ variable "on_host_maintenance" {
   default     = "MIGRATE"
 }
 
+variable "provisioning_model" {
+  description = "Provisioning model for agent instances: STANDARD or SPOT."
+  type        = string
+  default     = "STANDARD"
+}
+
 variable "image" {
   description = "Source image for boot disk"
   type        = string
