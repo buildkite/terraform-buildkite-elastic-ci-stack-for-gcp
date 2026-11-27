@@ -131,6 +131,17 @@ variable "on_host_maintenance" {
   }
 }
 
+variable "provisioning_model" {
+  description = "Provisioning model for agent instances: STANDARD or SPOT. SPOT instances are deleted on preemption and the managed instance group recreates them; on_host_maintenance is ignored and set to TERMINATE."
+  type        = string
+  default     = "STANDARD"
+
+  validation {
+    condition     = contains(["STANDARD", "SPOT"], var.provisioning_model)
+    error_message = "Provisioning model must be STANDARD or SPOT."
+  }
+}
+
 variable "image" {
   description = "Source image for boot disk. Use a custom Packer-built image or a public Buildkite image."
   type        = string

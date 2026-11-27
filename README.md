@@ -49,6 +49,33 @@ automatic restart remains enabled. Choose zones that support your GPU and use a
 Buildkite agent image with the required NVIDIA drivers (and NVIDIA Container
 Toolkit for GPU-enabled Docker builds); the default image does not install them.
 
+### Spot VMs
+
+Set `provisioning_model = "SPOT"` to run agents on
+[Spot VMs](https://cloud.google.com/compute/docs/instances/spot), which cost
+much less than standard VMs but can be preempted at any time:
+
+```hcl
+  provisioning_model = "SPOT"
+```
+
+A preempted agent gets the Spot shutdown budget in `stop-agent-gracefully`,
+its job is lost, and the VM is deleted so the managed instance group can
+recreate the capacity. Retry lost jobs automatically in your pipeline:
+
+```yaml
+retry:
+  automatic:
+    - exit_status: -1
+      limit: 2
+    - signal_reason: agent_stop
+      limit: 2
+```
+
+Spot VMs cannot live migrate, so `on_host_maintenance` is set to `TERMINATE`.
+A managed instance group cannot mix Spot and standard VMs: when no Spot
+capacity is available, jobs wait until it returns.
+
 ## Contributing
 
 See [Contributing Guidelines](CONTRIBUTING.md).
@@ -127,6 +154,7 @@ No resources.
 | <a name="input_network_name"></a> [network\_name](#input\_network\_name) | Name of the VPC network to create. Defaults to '{stack\_name}-network' if not specified. | `string` | `null` | no |
 | <a name="input_on_host_maintenance"></a> [on\_host\_maintenance](#input\_on\_host\_maintenance) | Action to take during host maintenance: MIGRATE or TERMINATE. GPU instances require TERMINATE, which can interrupt running builds. | `string` | `"MIGRATE"` | no |
 | <a name="input_project_id"></a> [project\_id](#input\_project\_id) | GCP project ID where the Elastic CI Stack will be deployed | `string` | n/a | yes |
+| <a name="input_provisioning_model"></a> [provisioning\_model](#input\_provisioning\_model) | Provisioning model for agent instances: STANDARD or SPOT. SPOT instances are deleted on preemption and the managed instance group recreates them; on\_host\_maintenance is ignored and set to TERMINATE. | `string` | `"STANDARD"` | no |
 | <a name="input_region"></a> [region](#input\_region) | GCP region where resources will be deployed (e.g., 'us-central1', 'europe-west1') | `string` | `"us-central1"` | no |
 | <a name="input_root_disk_size_gb"></a> [root\_disk\_size\_gb](#input\_root\_disk\_size\_gb) | Size of the root disk in GB. Increase for larger Docker images or build artifacts. | `number` | `50` | no |
 | <a name="input_root_disk_type"></a> [root\_disk\_type](#input\_root\_disk\_type) | Type of root disk: 'pd-standard' (cheaper, slower), 'pd-balanced' (recommended), 'pd-ssd' (fastest) | `string` | `"pd-balanced"` | no |

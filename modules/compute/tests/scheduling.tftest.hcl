@@ -54,3 +54,79 @@ run "rejects_invalid_host_maintenance_policy" {
 
   expect_failures = [var.on_host_maintenance]
 }
+
+run "uses_standard_vms_by_default" {
+  command = plan
+
+  assert {
+    condition     = google_compute_instance_template.buildkite_agent.scheduling[0].provisioning_model == "STANDARD"
+    error_message = "Agents must use standard VMs by default."
+  }
+
+  assert {
+    condition     = !google_compute_instance_template.buildkite_agent.scheduling[0].preemptible
+    error_message = "Standard VMs must not be preemptible."
+  }
+
+  assert {
+    condition     = google_compute_instance_template.buildkite_agent.scheduling[0].instance_termination_action == null
+    error_message = "Standard VMs must not set a Spot termination action."
+  }
+}
+
+run "supports_spot_vms" {
+  command = plan
+
+  variables {
+    provisioning_model = "SPOT"
+  }
+
+  assert {
+    condition     = google_compute_instance_template.buildkite_agent.scheduling[0].provisioning_model == "SPOT"
+    error_message = "Spot agents must use the SPOT provisioning model."
+  }
+
+  assert {
+    condition     = google_compute_instance_template.buildkite_agent.scheduling[0].preemptible
+    error_message = "Spot agents must be preemptible."
+  }
+
+  assert {
+    condition     = !google_compute_instance_template.buildkite_agent.scheduling[0].automatic_restart
+    error_message = "Spot agents cannot restart automatically."
+  }
+
+  assert {
+    condition     = google_compute_instance_template.buildkite_agent.scheduling[0].on_host_maintenance == "TERMINATE"
+    error_message = "Spot agents cannot live migrate during host maintenance."
+  }
+
+  assert {
+    condition     = google_compute_instance_template.buildkite_agent.scheduling[0].instance_termination_action == "DELETE"
+    error_message = "Preempted Spot agents must be deleted so the MIG recreates capacity."
+  }
+}
+
+run "spot_overrides_live_migration" {
+  command = plan
+
+  variables {
+    provisioning_model  = "SPOT"
+    on_host_maintenance = "MIGRATE"
+  }
+
+  assert {
+    condition     = google_compute_instance_template.buildkite_agent.scheduling[0].on_host_maintenance == "TERMINATE"
+    error_message = "Spot agents must terminate on host maintenance even when MIGRATE is requested."
+  }
+}
+
+run "rejects_invalid_provisioning_model" {
+  command = plan
+
+  variables {
+    provisioning_model = "PREEMPTIBLE"
+  }
+
+  expect_failures = [var.provisioning_model]
+}

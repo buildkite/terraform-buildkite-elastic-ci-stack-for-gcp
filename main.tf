@@ -65,6 +65,7 @@ module "compute" {
   # Instance configuration
   machine_type        = var.machine_type
   on_host_maintenance = var.on_host_maintenance
+  provisioning_model  = var.provisioning_model
   image               = var.image
   root_disk_size_gb   = var.root_disk_size_gb
   root_disk_type      = var.root_disk_type

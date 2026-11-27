@@ -22,9 +22,15 @@ resource "google_compute_instance_template" "buildkite_agent" {
   machine_type = var.machine_type
   region       = var.region
 
+  # Spot VMs cannot live migrate or restart automatically. Deleting a preempted
+  # VM lets the MIG recreate it; stop-agent-gracefully already shortens the
+  # drain budget and skips the agent's own MIG removal on preemption.
   scheduling {
-    on_host_maintenance = var.on_host_maintenance
-    automatic_restart   = true
+    provisioning_model          = var.provisioning_model
+    preemptible                 = var.provisioning_model == "SPOT"
+    automatic_restart           = var.provisioning_model == "STANDARD"
+    on_host_maintenance         = var.provisioning_model == "SPOT" ? "TERMINATE" : var.on_host_maintenance
+    instance_termination_action = var.provisioning_model == "SPOT" ? "DELETE" : null
   }
 
   tags = [var.instance_tag]
