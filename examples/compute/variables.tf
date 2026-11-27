@@ -57,6 +57,18 @@ variable "on_host_maintenance" {
   default     = "MIGRATE"
 }
 
+variable "fallback_machine_types" {
+  description = "Machine types to use, in order of preference, when machine_type has no capacity"
+  type        = list(string)
+  default     = []
+}
+
+variable "distribution_policy_target_shape" {
+  description = "Zone distribution of the managed instance group: EVEN, BALANCED, ANY or ANY_SINGLE_ZONE"
+  type        = string
+  default     = "EVEN"
+}
+
 variable "image" {
   description = "Source image for boot disk"
   type        = string

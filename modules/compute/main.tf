@@ -104,7 +104,33 @@ resource "google_compute_region_instance_group_manager" "buildkite_agents" {
     instance_template = google_compute_instance_template.buildkite_agent.id
   }
 
-  distribution_policy_zones = var.zones
+  distribution_policy_zones        = var.zones
+  distribution_policy_target_shape = var.distribution_policy_target_shape
+
+  # Each machine type gets its own rank, so the MIG tries them in list order and
+  # falls back to the next one only when a type has no capacity.
+  dynamic "instance_flexibility_policy" {
+    for_each = length(var.fallback_machine_types) > 0 ? [1] : []
+    content {
+      dynamic "instance_selections" {
+        for_each = concat([var.machine_type], var.fallback_machine_types)
+        content {
+          name          = instance_selections.value
+          rank          = instance_selections.key + 1
+          machine_types = [instance_selections.value]
+        }
+      }
+    }
+  }
+
+  # Without this, a repaired VM is recreated with its original machine type even
+  # when that type has no capacity left.
+  dynamic "instance_lifecycle_policy" {
+    for_each = length(var.fallback_machine_types) > 0 ? [1] : []
+    content {
+      force_update_on_repair = "YES"
+    }
+  }
 
   # Apply new instance templates only when the MIG creates or otherwise
   # replaces an instance. Proactive updates and redistribution could select an
@@ -128,6 +154,11 @@ resource "google_compute_region_instance_group_manager" "buildkite_agents" {
 
   lifecycle {
     ignore_changes = [target_size]
+
+    precondition {
+      condition     = length(var.fallback_machine_types) == 0 || var.distribution_policy_target_shape != "EVEN"
+      error_message = "fallback_machine_types requires distribution_policy_target_shape BALANCED, ANY or ANY_SINGLE_ZONE: instance flexibility does not support EVEN."
+    }
   }
 }
 
